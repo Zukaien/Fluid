@@ -13,7 +13,7 @@ const GIF_RE = /^https:\/\/(media\d*|i)\.giphy\.com\//, clampN = v => Math.max(5
 const CSP = "default-src 'self'; img-src 'self' data: https://*.giphy.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
 
 fs.mkdirSync(DATA, { recursive: true });
-let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, arch: {}, seq: 0 };
+let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, arch: {}, imgs: {}, seq: 0 };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 let timer = null;
 const flushFile = () => { const t = FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(db)); fs.renameSync(t, FILE); };
@@ -31,8 +31,9 @@ async function rpipe(cmds) {
 const shards = () => {
   const out = {}, users = {};
   for (const u in db.users) { const { avatar, ...rest } = db.users[u]; users[u] = rest; if (avatar) out['fluid:av:' + u] = avatar; }
-  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), follows: db.follows, groups: db.groups, arch: db.arch });
+  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), imgs: Object.keys(db.imgs), follows: db.follows, groups: db.groups, arch: db.arch });
   for (const k in db.msgs) out['fluid:msg:' + k] = JSON.stringify(db.msgs[k]);
+  for (const k in db.imgs) out['fluid:img:' + k] = db.imgs[k];
   return out;
 };
 async function pushRemote() {
@@ -49,11 +50,12 @@ async function loadRemote() {
   const raw = (await rpipe([['GET', 'fluid:core']]))[0];
   if (raw) {
     const core = JSON.parse(raw), names = Object.keys(core.users || {}), convs = core.convs || [], res = [];
-    const cmds = [...names.map(u => ['GET', 'fluid:av:' + u]), ...convs.map(k => ['GET', 'fluid:msg:' + k])];
+    const imgs = core.imgs || [], cmds = [...names.map(u => ['GET', 'fluid:av:' + u]), ...convs.map(k => ['GET', 'fluid:msg:' + k]), ...imgs.map(k => ['GET', 'fluid:img:' + k])];
     for (let i = 0; i < cmds.length; i += 50) res.push(...await rpipe(cmds.slice(i, i + 50)));
-    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, groups: core.groups || {}, arch: core.arch || {}, seq: core.seq || 0, msgs: {} };
+    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, groups: core.groups || {}, arch: core.arch || {}, seq: core.seq || 0, msgs: {}, imgs: {} };
     names.forEach((u, i) => { db.users[u].avatar = res[i] || ''; });
     convs.forEach((k, i) => { db.msgs[k] = JSON.parse(res[names.length + i] || '[]'); });
+    imgs.forEach((k, i) => { const v = res[names.length + convs.length + i]; if (v) db.imgs[k] = v; });
     remoteState = shards();
   } else console.log('Uzak veritabanı boş, mevcut veriyle başlanıyor.');
   ready = true;
@@ -101,11 +103,12 @@ function listFor(me) {
     const o = db.users[x], m = db.msgs[key(me, x)] || [];
     if (!fol.has(x) && !m.length) continue;
     const l = m[m.length - 1], last = r[x] || 0;
-    out.push({ u: x, bio: o.bio, av: o.av, note: fol.has(x) ? noteOf(o) : null, online: isOnline(x), following: fol.has(x), arch: archOf(key(me, x), me), unread: m.filter(z => z.f === x && z.id > last && !z.d).length, last: l ? { t: l.d ? '' : l.t, ts: l.ts, f: l.f, g: !!l.g, d: !!l.d } : null });
+    out.push({ u: x, bio: o.bio, av: o.av, note: fol.has(x) ? noteOf(o) : null, online: isOnline(x), following: fol.has(x), arch: archOf(key(me, x), me), unread: m.filter(z => z.f === x && z.id > last && !z.d).length, last: l ? { t: l.d ? '' : l.t, ts: l.ts, f: l.f, g: !!l.g, i: !!l.i, d: !!l.d } : null });
   }
   return out;
 }
 // ---- sınırsız geçmiş: her ARCH_N mesajda eski mesajlar indirilebilir, sonra temizlenir ----
+const rmImgs = arr => { for (const x of arr || []) if (x.i) delete db.imgs[x.i]; };
 const ARCH_N = +process.env.ARCHIVE_COUNT || 3000, ARCH_MS = (+process.env.ARCHIVE_DAYS || 3) * DAY;
 const members = ck => ck.startsWith('g:') ? ((db.groups[ck.slice(2)] || {}).members || []) : ck.split('|');
 const archOf = (ck, me) => { const a = db.arch[ck]; return a ? { n: a.n, deadline: a.at + ARCH_MS, done: a.dl.includes(me) } : null; };
@@ -121,7 +124,7 @@ function sweepArchives() {
   for (const ck of Object.keys(db.arch)) {
     const a = db.arch[ck], mem = members(ck);
     if (mem.length && Date.now() - a.at < ARCH_MS && !mem.every(u => a.dl.includes(u) || !db.users[u])) continue;
-    db.msgs[ck] = (db.msgs[ck] || []).filter(x => x.id > a.upto); delete db.arch[ck]; ch = true;
+    rmImgs((db.msgs[ck] || []).filter(x => x.id <= a.upto)); db.msgs[ck] = (db.msgs[ck] || []).filter(x => x.id > a.upto); delete db.arch[ck]; ch = true;
     checkArchive(ck); for (const u of mem) push(u, { type: 'user' });
   }
   if (ch) save();
@@ -131,9 +134,9 @@ setInterval(sweepArchives, 6e4);
 // ---- gruplar ----
 const groupOf = (g, me) => { const k = 'g:' + g.id, m = db.msgs[k] || [], l = m[m.length - 1], last = (db.reads[me] || {})[k] || 0;
   return { id: g.id, name: g.name, owner: g.owner, members: g.members.map(u => ({ u, av: db.users[u] ? db.users[u].av : 0 })),
-    unread: m.filter(z => z.f !== me && z.id > last && !z.d).length, last: l ? { t: l.d ? '' : l.t, ts: l.ts, f: l.f, g: !!l.g, d: !!l.d } : null, arch: archOf(k, me) }; };
+    unread: m.filter(z => z.f !== me && z.id > last && !z.d).length, last: l ? { t: l.d ? '' : l.t, ts: l.ts, f: l.f, g: !!l.g, i: !!l.i, d: !!l.d } : null, arch: archOf(k, me) }; };
 const groupsFor = me => Object.values(db.groups).filter(g => g.members.includes(me)).map(g => groupOf(g, me));
-function dropGroup(id) { delete db.groups[id]; delete db.msgs['g:' + id]; delete db.arch['g:' + id]; for (const u in db.reads) delete db.reads[u]['g:' + id]; }
+function dropGroup(id) { rmImgs(db.msgs['g:' + id]); delete db.groups[id]; delete db.msgs['g:' + id]; delete db.arch['g:' + id]; for (const u in db.reads) delete db.reads[u]['g:' + id]; }
 const push = (u, ev) => { for (const r of clients.get(u) || []) r.write(`data: ${JSON.stringify(ev)}\n\n`); };
 const broadcast = ev => { for (const u of clients.keys()) push(u, ev); };
 setInterval(() => { for (const s of clients.values()) for (const r of s) r.write(':\n\n'); }, 25000);
@@ -159,7 +162,7 @@ async function gifs(q) {
   const u = new URL(GIPHY_BASE + (q ? 'search' : 'trending'));
   u.search = new URLSearchParams({ api_key: GIPHY_KEY, limit: '24', rating: 'pg-13', ...(q ? { q } : {}) });
   const r = await fetch(u, { signal: AbortSignal.timeout(8000) }); if (!r.ok) throw new Error('giphy ' + r.status);
-  const j = await r.json(), d = (j.data || []).map(g => { const i = g.images || {}, a = i.fixed_width || i.downsized || {}, p = i.fixed_width_small || a;
+  const j = await r.json(), d = (j.data || []).map(g => { const i = g.images || {}, a = i.fixed_width || i.downsized || {}, p = a;
     return { id: g.id, u: a.url, p: p.url, w: +a.width || 200, h: +a.height || 200 }; }).filter(x => x.u && x.p && GIF_RE.test(x.u) && GIF_RE.test(x.p));
   if (gifCache.size > 200) gifCache.clear(); gifCache.set(ck, { t: Date.now(), d }); return d;
 }
@@ -169,7 +172,7 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x'), p = url.pathname, M = req.method;
   try {
     if (M === 'GET' && p === '/') { res.setHeader('Content-Security-Policy', CSP); res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' }); return res.end(fs.readFileSync(path.join(__dirname, 'index.html'))); }
-    if (!p.startsWith('/api/') && !p.startsWith('/avatar/')) { res.writeHead(404); return res.end(); }
+    if (!p.startsWith('/api/') && !p.startsWith('/avatar/') && !p.startsWith('/img/')) { res.writeHead(404); return res.end(); }
     if (M !== 'GET' && req.headers.origin) { let ok = false; try { const h = new URL(req.headers.origin).host; ok = h === req.headers.host || h === req.headers['x-forwarded-host']; } catch (e) {} if (!ok) return J(res, 403, { error: 'Geçersiz istek' }); }
     const ip = TRUST ? ((req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress) : req.socket.remoteAddress;
 
@@ -202,6 +205,11 @@ const server = http.createServer(async (req, res) => {
       if (!o || !o.avatar) { res.writeHead(404); return res.end(); }
       res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=31536000, immutable' });
       return res.end(Buffer.from(o.avatar.split(',')[1], 'base64'));
+    }
+    if (M === 'GET' && (m = /^\/img\/([a-f0-9]{24})$/.exec(p))) {
+      const d = db.imgs[m[1]]; if (!d) { res.writeHead(404); return res.end(); }
+      res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=31536000, immutable' });
+      return res.end(Buffer.from(d, 'base64'));
     }
     if (M === 'GET' && p === '/api/search') {
       const q = String(url.searchParams.get('q') || '').toLowerCase().trim().slice(0, 16);
@@ -281,7 +289,7 @@ const server = http.createServer(async (req, res) => {
         if (msg.g) return J(res, 400, { error: 'GIF düzenlenemez' }); if (!t) return J(res, 400, { error: 'Boş mesaj' });
         msg.t = t; msg.e = Date.now();
       } else {
-        msg.d = 1; msg.t = ''; delete msg.g; delete msg.r; delete msg.e;
+        rmImgs([msg]); msg.d = 1; msg.t = ''; delete msg.g; delete msg.i; delete msg.iw; delete msg.ih; delete msg.r; delete msg.e;
         for (const x of arr) if (x.r && x.r.id === msg.id) { x.r.t = ''; x.r.d = 1; }
       }
       save(); const ev = { type: M === 'PUT' ? 'edit' : 'del', ...(gk ? { g: other } : { to: other }), m: msg };
@@ -296,9 +304,11 @@ const server = http.createServer(async (req, res) => {
       if (M === 'POST' && m[1] === 'messages') {
         const b = await body(req), t = String(b.t || '').trim().slice(0, 2000), gx = b.gif;
         const gif = gx && typeof gx.u === 'string' && gx.u.length < 600 && GIF_RE.test(gx.u) ? { u: gx.u, w: clampN(gx.w), h: clampN(gx.h) } : null;
-        if (!t && !gif) return J(res, 400, { error: 'Boş mesaj' });
+        const im = !gif && typeof b.img === 'string' && b.img.length < 7e5 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(b.img) ? b.img.slice(23) : null;
+        if (!t && !gif && !im) return J(res, 400, { error: 'Boş mesaj' });
         const msg = { id: ++db.seq, f: me, t: gif ? '' : t, ts: Date.now() }; if (gif) msg.g = gif;
-        const ro = b.r ? arr.find(z => z.id === +b.r && !z.d) : null; if (ro) msg.r = { id: ro.id, f: ro.f, t: ro.g ? 'GIF' : ro.t.slice(0, 120) };
+        if (im) { const id = crypto.randomBytes(12).toString('hex'); db.imgs[id] = im; msg.i = id; msg.iw = clampN(b.iw); msg.ih = clampN(b.ih); }
+        const ro = b.r ? arr.find(z => z.id === +b.r && !z.d) : null; if (ro) msg.r = { id: ro.id, f: ro.f, t: ro.g ? 'GIF' : ro.i && !ro.t ? '📷' : ro.t.slice(0, 120) };
         const list = db.msgs[ck] = arr; list.push(msg); checkArchive(ck);
         (db.reads[me] = db.reads[me] || {})[other] = msg.id; save();
         const ev = gk ? { type: 'msg', g: other, m: msg } : { type: 'msg', to: other, m: msg };
@@ -341,7 +351,7 @@ const server = http.createServer(async (req, res) => {
       delete db.users[me]; dropSessions(me); delete db.reads[me]; delete db.follows[me];
       for (const k in db.follows) db.follows[k] = db.follows[k].filter(x => x !== me);
       for (const g of Object.values(db.groups)) if (g.members.includes(me)) { g.members = g.members.filter(x => x !== me); if (!g.members.length) dropGroup(g.id); else if (g.owner === me) g.owner = g.members[0]; }
-      for (const k of Object.keys(db.msgs)) if (k.split('|').includes(me)) { delete db.msgs[k]; delete db.arch[k]; }
+      for (const k of Object.keys(db.msgs)) if (k.split('|').includes(me)) { rmImgs(db.msgs[k]); delete db.msgs[k]; delete db.arch[k]; }
       for (const r of clients.get(me) || []) r.end(); clients.delete(me);
       cookie(res, '', 0, req); save(); broadcast({ type: 'user' }); return J(res, 200, {});
     }
