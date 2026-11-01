@@ -11,7 +11,7 @@ const DEF = { accent: 'ice', snow: true, calm: false, sound: true, notify: false
 const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
 
 fs.mkdirSync(DATA, { recursive: true });
-let db = { users: {}, msgs: {}, reads: {}, sessions: {}, seq: 0 };
+let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, seq: 0 };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 let timer = null;
 const flushFile = () => { const t = FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(db)); fs.renameSync(t, FILE); };
@@ -29,7 +29,7 @@ async function rpipe(cmds) {
 const shards = () => {
   const out = {}, users = {};
   for (const u in db.users) { const { avatar, ...rest } = db.users[u]; users[u] = rest; if (avatar) out['fluid:av:' + u] = avatar; }
-  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs) });
+  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), follows: db.follows });
   for (const k in db.msgs) out['fluid:msg:' + k] = JSON.stringify(db.msgs[k]);
   return out;
 };
@@ -49,7 +49,7 @@ async function loadRemote() {
     const core = JSON.parse(raw), names = Object.keys(core.users || {}), convs = core.convs || [], res = [];
     const cmds = [...names.map(u => ['GET', 'fluid:av:' + u]), ...convs.map(k => ['GET', 'fluid:msg:' + k])];
     for (let i = 0; i < cmds.length; i += 50) res.push(...await rpipe(cmds.slice(i, i + 50)));
-    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, seq: core.seq || 0, msgs: {} };
+    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, seq: core.seq || 0, msgs: {} };
     names.forEach((u, i) => { db.users[u].avatar = res[i] || ''; });
     convs.forEach((k, i) => { db.msgs[k] = JSON.parse(res[names.length + i] || '[]'); });
     remoteState = shards();
@@ -91,12 +91,17 @@ const noteOf = o => (o.note && Date.now() - o.note.ts < DAY ? o.note : null);
 const clients = new Map();
 const isOnline = u => (clients.get(u) || { size: 0 }).size > 0 && db.users[u].settings?.showOnline !== false;
 const meOf = u => { const o = db.users[u]; return { u, bio: o.bio, av: o.av, note: noteOf(o), settings: { ...DEF, ...o.settings } }; };
+// Listede yalnızca takip ettiklerin ve yazıştıkların görünür.
 function listFor(me) {
-  const r = (db.reads[me] || {});
-  return Object.keys(db.users).filter(x => x !== me).map(x => {
-    const o = db.users[x], m = db.msgs[key(me, x)] || [], l = m[m.length - 1], last = r[x] || 0;
-    return { u: x, bio: o.bio, av: o.av, note: noteOf(o), online: isOnline(x), unread: m.filter(z => z.f === x && z.id > last).length, last: l ? { t: l.t, ts: l.ts, f: l.f } : null };
-  });
+  const r = db.reads[me] || {}, fol = new Set(db.follows[me] || []), out = [];
+  for (const x of Object.keys(db.users)) {
+    if (x === me) continue;
+    const o = db.users[x], m = db.msgs[key(me, x)] || [];
+    if (!fol.has(x) && !m.length) continue;
+    const l = m[m.length - 1], last = r[x] || 0;
+    out.push({ u: x, bio: o.bio, av: o.av, note: fol.has(x) ? noteOf(o) : null, online: isOnline(x), following: fol.has(x), unread: m.filter(z => z.f === x && z.id > last).length, last: l ? { t: l.t, ts: l.ts, f: l.f } : null });
+  }
+  return out;
 }
 const push = (u, ev) => { for (const r of clients.get(u) || []) r.write(`data: ${JSON.stringify(ev)}\n\n`); };
 const broadcast = ev => { for (const u of clients.keys()) push(u, ev); };
@@ -156,6 +161,20 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { 'Content-Type': 'image/jpeg', 'Cache-Control': 'private, max-age=31536000, immutable' });
       return res.end(Buffer.from(o.avatar.split(',')[1], 'base64'));
     }
+    if (M === 'GET' && p === '/api/search') {
+      const q = String(url.searchParams.get('q') || '').toLowerCase().trim().slice(0, 16);
+      if (q.length < 2) return J(res, 200, { users: [] });
+      const fol = new Set(db.follows[me] || []);
+      const users = Object.keys(db.users).filter(x => x !== me && x.includes(q))
+        .sort((a, b) => (a.startsWith(q) ? 0 : 1) - (b.startsWith(q) ? 0 : 1) || a.localeCompare(b)).slice(0, 20)
+        .map(x => ({ u: x, bio: db.users[x].bio, av: db.users[x].av, following: fol.has(x) }));
+      return J(res, 200, { users });
+    }
+    if ((M === 'POST' || M === 'DELETE') && (m = /^\/api\/follow\/([^/]+)$/.exec(p))) {
+      const t = decodeURIComponent(m[1]); if (!db.users[t] || t === me) return J(res, 404, { error: 'Kullanıcı bulunamadı' });
+      const set = new Set(db.follows[me] || []); if (M === 'POST') set.add(t); else set.delete(t);
+      db.follows[me] = [...set]; save(); push(me, { type: 'user' }); return J(res, 200, { following: set.has(t) });
+    }
     if (M === 'GET' && p === '/api/me') return J(res, 200, { me: meOf(me) });
     if (M === 'GET' && p === '/api/users') return J(res, 200, { users: listFor(me) });
     if (M === 'GET' && p === '/api/stream') {
@@ -213,7 +232,8 @@ const server = http.createServer(async (req, res) => {
     if (M === 'POST' && p === '/api/delete') {
       const b = await body(req), pk = 'pw:' + me, w = wait([pk, 8]); if (w) return tooMany(res, w);
       if (!okPass(U, String(b.p || ''))) { strike(pk); return J(res, 403, { error: 'Şifre hatalı' }); }
-      delete db.users[me]; dropSessions(me); delete db.reads[me];
+      delete db.users[me]; dropSessions(me); delete db.reads[me]; delete db.follows[me];
+      for (const k in db.follows) db.follows[k] = db.follows[k].filter(x => x !== me);
       for (const k of Object.keys(db.msgs)) if (k.split('|').includes(me)) delete db.msgs[k];
       for (const r of clients.get(me) || []) r.end(); clients.delete(me);
       cookie(res, '', 0, req); save(); broadcast({ type: 'user' }); return J(res, 200, {});
