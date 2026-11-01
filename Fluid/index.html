@@ -295,7 +295,7 @@ function trDom(){const w=document.createTreeWalker(document.body,NodeFilter.SHOW
   while(n=w.nextNode()){if(n.parentElement.closest('#main,#rows,#notes,#vm,#err,script,style'))continue;
     const o=n.__o??(n.__o=n.nodeValue.trim());if(!o||!EN[o])continue;n.nodeValue=n.nodeValue.replace(/\S[\s\S]*\S|\S/,()=>LANG=='en'?EN[o]:o)}
   document.querySelectorAll('[placeholder],[data-t]').forEach(el=>{if(el.closest('#main'))return;for(const a of['placeholder','data-t']){if(!el.hasAttribute(a))continue;const k='_o'+a,o=el[k]??(el[k]=el.getAttribute(a));if(EN[o])el.setAttribute(a,LANG=='en'?EN[o]:o)}})}
-function setLang(l,quiet){LANG=l;try{localStorage.setItem('fl_lang',l)}catch(e){}document.documentElement.lang=l;trDom();$('#lgb').textContent=l=='tr'?'EN':'TR';setMode(mode);$('#err').textContent='';
+function setLang(l,quiet){LANG=l;try{localStorage.setItem('fl_lang',l)}catch(e){}document.documentElement.lang=l;trDom();$('#lgb').innerHTML=`<b style="opacity:${l=='tr'?1:.4}">TR</b> | <b style="opacity:${l=='en'?1:.4}">EN</b>`;setMode(mode);$('#err').textContent='';
   if(S.me){S.me.settings.lang=l;if(!quiet)api('PUT','/settings',{lang:l}).catch(()=>{});renderList();renderMain()}}
 $('#lgb').onclick=()=>setLang(LANG=='tr'?'en':'tr');
 async function setSet(patch){Object.assign(S.me.settings,patch);applySettings();
