@@ -1,4 +1,3 @@
-
 'use strict';
 // Fluid sunucusu – sıfır bağımlılık (yalnızca Node.js 18+).
 // Çalıştır: node server.js      Şifre sıfırla: node server.js reset <kullanici> <yeni-sifre>
@@ -12,7 +11,7 @@ const DEF = { accent: 'ice', snow: true, calm: false, sound: true, notify: false
 const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
 
 fs.mkdirSync(DATA, { recursive: true });
-let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, seq: 0 };
+let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, seq: 0 };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 let timer = null;
 const flushFile = () => { const t = FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(db)); fs.renameSync(t, FILE); };
@@ -30,7 +29,7 @@ async function rpipe(cmds) {
 const shards = () => {
   const out = {}, users = {};
   for (const u in db.users) { const { avatar, ...rest } = db.users[u]; users[u] = rest; if (avatar) out['fluid:av:' + u] = avatar; }
-  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), follows: db.follows });
+  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), follows: db.follows, groups: db.groups });
   for (const k in db.msgs) out['fluid:msg:' + k] = JSON.stringify(db.msgs[k]);
   return out;
 };
@@ -50,7 +49,7 @@ async function loadRemote() {
     const core = JSON.parse(raw), names = Object.keys(core.users || {}), convs = core.convs || [], res = [];
     const cmds = [...names.map(u => ['GET', 'fluid:av:' + u]), ...convs.map(k => ['GET', 'fluid:msg:' + k])];
     for (let i = 0; i < cmds.length; i += 50) res.push(...await rpipe(cmds.slice(i, i + 50)));
-    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, seq: core.seq || 0, msgs: {} };
+    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, groups: core.groups || {}, seq: core.seq || 0, msgs: {} };
     names.forEach((u, i) => { db.users[u].avatar = res[i] || ''; });
     convs.forEach((k, i) => { db.msgs[k] = JSON.parse(res[names.length + i] || '[]'); });
     remoteState = shards();
@@ -104,6 +103,12 @@ function listFor(me) {
   }
   return out;
 }
+// ---- gruplar ----
+const groupOf = (g, me) => { const k = 'g:' + g.id, m = db.msgs[k] || [], l = m[m.length - 1], last = (db.reads[me] || {})[k] || 0;
+  return { id: g.id, name: g.name, owner: g.owner, members: g.members.map(u => ({ u, av: db.users[u] ? db.users[u].av : 0 })),
+    unread: m.filter(z => z.f !== me && z.id > last).length, last: l ? { t: l.t, ts: l.ts, f: l.f } : null }; };
+const groupsFor = me => Object.values(db.groups).filter(g => g.members.includes(me)).map(g => groupOf(g, me));
+function dropGroup(id) { delete db.groups[id]; delete db.msgs['g:' + id]; for (const u in db.reads) delete db.reads[u]['g:' + id]; }
 const push = (u, ev) => { for (const r of clients.get(u) || []) r.write(`data: ${JSON.stringify(ev)}\n\n`); };
 const broadcast = ev => { for (const u of clients.keys()) push(u, ev); };
 setInterval(() => { for (const s of clients.values()) for (const r of s) r.write(':\n\n'); }, 25000);
@@ -177,7 +182,7 @@ const server = http.createServer(async (req, res) => {
       db.follows[me] = [...set]; save(); push(me, { type: 'user' }); return J(res, 200, { following: set.has(t) });
     }
     if (M === 'GET' && p === '/api/me') return J(res, 200, { me: meOf(me) });
-    if (M === 'GET' && p === '/api/users') return J(res, 200, { users: listFor(me) });
+    if (M === 'GET' && p === '/api/users') return J(res, 200, { users: listFor(me), groups: groupsFor(me) });
     if (M === 'GET' && p === '/api/stream') {
       if (url.searchParams.get('u') !== me) { res.writeHead(409); return res.end(); }
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
@@ -187,17 +192,40 @@ const server = http.createServer(async (req, res) => {
       req.on('close', () => { set.delete(res); if (!set.size) setTimeout(() => { if (!(clients.get(me) || { size: 0 }).size) broadcast({ type: 'presence' }); }, 3000); });
       return;
     }
+    if (M === 'POST' && p === '/api/groups') {
+      const b = await body(req), name = String(b.name || '').trim().slice(0, 30); if (!name) return J(res, 400, { error: 'Grup adı gerekli' });
+      const mem = [...new Set([me, ...(Array.isArray(b.members) ? b.members.map(String) : [])])].filter(x => db.users[x]).slice(0, 50);
+      if (mem.length < 2) return J(res, 400, { error: 'En az bir üye seç' });
+      const id = crypto.randomBytes(4).toString('hex'); db.groups[id] = { id, name, owner: me, members: mem, created: Date.now() };
+      save(); for (const u of mem) push(u, { type: 'user' }); return J(res, 200, { group: groupOf(db.groups[id], me) });
+    }
+    if (M === 'POST' && (m = /^\/api\/groups\/([a-f0-9]{8})\/(members|leave)$/.exec(p))) {
+      const g = db.groups[m[1]]; if (!g || !g.members.includes(me)) return J(res, 404, { error: 'Grup bulunamadı' });
+      const before = [...g.members];
+      if (m[2] === 'members') {
+        const b = await body(req), add = [...new Set((Array.isArray(b.members) ? b.members.map(String) : []).filter(x => db.users[x] && !g.members.includes(x)))];
+        if (g.members.length + add.length > 50) return J(res, 400, { error: 'Çok fazla üye' });
+        g.members.push(...add);
+      } else {
+        g.members = g.members.filter(x => x !== me); if (g.owner === me && g.members.length) g.owner = g.members[0];
+        if (!g.members.length) dropGroup(g.id);
+      }
+      save(); for (const u of new Set([...before, ...(db.groups[g.id] ? g.members : [])])) push(u, { type: 'user' }); return J(res, 200, {});
+    }
     if ((m = /^\/api\/(messages|read)\/([^/]+)$/.exec(p))) {
-      const other = decodeURIComponent(m[2]); if (!db.users[other] || other === me) return J(res, 404, { error: 'Kullanıcı bulunamadı' });
-      const arr = db.msgs[key(me, other)] || [];
+      const other = decodeURIComponent(m[2]), gk = other.startsWith('g:'), grp = gk ? db.groups[other.slice(2)] : null;
+      if (gk ? !(grp && grp.members.includes(me)) : (!db.users[other] || other === me)) return J(res, 404, { error: gk ? 'Grup bulunamadı' : 'Kullanıcı bulunamadı' });
+      const ck = gk ? other : key(me, other), arr = db.msgs[ck] || [];
       if (M === 'GET' && m[1] === 'messages') return J(res, 200, { msgs: arr.slice(-300) });
       if (M === 'POST' && m[1] === 'read') { (db.reads[me] = db.reads[me] || {})[other] = arr.length ? arr[arr.length - 1].id : 0; save(); return J(res, 200, {}); }
       if (M === 'POST' && m[1] === 'messages') {
-        const t = String((await body(req)).t || '').trim().slice(0, 2000); if (!t) return J(res, 400, { error: 'Boş mesaj' });
+        const b = await body(req), t = String(b.t || '').trim().slice(0, 2000); if (!t) return J(res, 400, { error: 'Boş mesaj' });
         const msg = { id: ++db.seq, f: me, t, ts: Date.now() };
-        const list = db.msgs[key(me, other)] = arr; list.push(msg); if (list.length > 3000) list.splice(0, list.length - 3000);
+        const ro = b.r ? arr.find(z => z.id === +b.r) : null; if (ro) msg.r = { id: ro.id, f: ro.f, t: ro.t.slice(0, 120) };
+        const list = db.msgs[ck] = arr; list.push(msg); if (list.length > 3000) list.splice(0, list.length - 3000);
         (db.reads[me] = db.reads[me] || {})[other] = msg.id; save();
-        const ev = { type: 'msg', to: other, m: msg }; push(other, ev); push(me, ev); return J(res, 200, { m: msg });
+        const ev = gk ? { type: 'msg', g: other, m: msg } : { type: 'msg', to: other, m: msg };
+        for (const u of gk ? grp.members : [other, me]) push(u, ev); return J(res, 200, { m: msg });
       }
     }
     if (M === 'PUT' && p === '/api/profile') {
@@ -235,6 +263,7 @@ const server = http.createServer(async (req, res) => {
       if (!okPass(U, String(b.p || ''))) { strike(pk); return J(res, 403, { error: 'Şifre hatalı' }); }
       delete db.users[me]; dropSessions(me); delete db.reads[me]; delete db.follows[me];
       for (const k in db.follows) db.follows[k] = db.follows[k].filter(x => x !== me);
+      for (const g of Object.values(db.groups)) if (g.members.includes(me)) { g.members = g.members.filter(x => x !== me); if (!g.members.length) dropGroup(g.id); else if (g.owner === me) g.owner = g.members[0]; }
       for (const k of Object.keys(db.msgs)) if (k.split('|').includes(me)) delete db.msgs[k];
       for (const r of clients.get(me) || []) r.end(); clients.delete(me);
       cookie(res, '', 0, req); save(); broadcast({ type: 'user' }); return J(res, 200, {});
