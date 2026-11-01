@@ -66,7 +66,7 @@ if (process.argv[2] === 'reset') {
 
 const server = http.createServer(async (req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'same-origin'); res.setHeader('X-Frame-Options', 'DENY');
-  const p = new URL(req.url, 'http://x').pathname, M = req.method;
+  const url = new URL(req.url, 'http://x'), p = url.pathname, M = req.method;
   try {
     if (M === 'GET' && p === '/') { res.setHeader('Content-Security-Policy', CSP); res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' }); return res.end(fs.readFileSync(path.join(__dirname, 'index.html'))); }
     if (!p.startsWith('/api/') && !p.startsWith('/avatar/')) { res.writeHead(404); return res.end(); }
@@ -92,6 +92,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     const me = auth(req); if (!me) return J(res, 401, { error: 'Oturum gerekli' });
+    const hu = req.headers['x-fluid-user']; if (hu && hu !== me) return J(res, 409, { error: 'Hesap değişti' });
     const U = db.users[me];
 
     let m;
@@ -104,6 +105,7 @@ const server = http.createServer(async (req, res) => {
     if (M === 'GET' && p === '/api/me') return J(res, 200, { me: meOf(me) });
     if (M === 'GET' && p === '/api/users') return J(res, 200, { users: listFor(me) });
     if (M === 'GET' && p === '/api/stream') {
+      if (url.searchParams.get('u') !== me) { res.writeHead(409); return res.end(); }
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
       res.write('retry: 3000\n\n');
       let set = clients.get(me); if (!set) clients.set(me, set = new Set());
