@@ -1,4 +1,3 @@
-
 'use strict';
 // Fluid sunucusu – sıfır bağımlılık (yalnızca Node.js 18+).
 // Çalıştır: node server.js      Şifre sıfırla: node server.js reset <kullanici> <yeni-sifre>
@@ -12,7 +11,7 @@ const DEF = { accent: 'ice', snow: true, calm: false, sound: true, notify: false
 const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
 
 fs.mkdirSync(DATA, { recursive: true });
-let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, seq: 0 };
+let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, seq: 0 };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 let timer = null;
 const flushFile = () => { const t = FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(db)); fs.renameSync(t, FILE); };
@@ -30,7 +29,7 @@ async function rpipe(cmds) {
 const shards = () => {
   const out = {}, users = {};
   for (const u in db.users) { const { avatar, ...rest } = db.users[u]; users[u] = rest; if (avatar) out['fluid:av:' + u] = avatar; }
-  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), follows: db.follows });
+  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), follows: db.follows, groups: db.groups || {} });
   for (const k in db.msgs) out['fluid:msg:' + k] = JSON.stringify(db.msgs[k]);
   return out;
 };
@@ -50,7 +49,7 @@ async function loadRemote() {
     const core = JSON.parse(raw), names = Object.keys(core.users || {}), convs = core.convs || [], res = [];
     const cmds = [...names.map(u => ['GET', 'fluid:av:' + u]), ...convs.map(k => ['GET', 'fluid:msg:' + k])];
     for (let i = 0; i < cmds.length; i += 50) res.push(...await rpipe(cmds.slice(i, i + 50)));
-    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, seq: core.seq || 0, msgs: {} };
+    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, groups: core.groups || {}, seq: core.seq || 0, msgs: {} };
     names.forEach((u, i) => { db.users[u].avatar = res[i] || ''; });
     convs.forEach((k, i) => { db.msgs[k] = JSON.parse(res[names.length + i] || '[]'); });
     remoteState = shards();
@@ -177,6 +176,52 @@ const server = http.createServer(async (req, res) => {
       db.follows[me] = [...set]; save(); push(me, { type: 'user' }); return J(res, 200, { following: set.has(t) });
     }
     if (M === 'GET' && p === '/api/me') return J(res, 200, { me: meOf(me) });
+    if (M === 'GET' && (m = /^\/api\/profile\/([^/]+)$/.exec(p))) {
+      const name = decodeURIComponent(m[1]), o = db.users[name];
+      if (!o) return J(res, 404, { error: 'Kullanıcı bulunamadı' });
+      const followers = Object.keys(db.follows).filter(x => (db.follows[x] || []).includes(name)).length;
+      return J(res, 200, { profile: { u: name, bio: o.bio || '', av: o.av || 0, followers, following: (db.follows[name] || []).length, followingMe: (db.follows[me] || []).includes(name), mine: name === me } });
+    }
+    if (M === 'GET' && p === '/api/groups') {
+      const groups = Object.values(db.groups || {}).filter(g => g.members.includes(me))
+        .map(g => ({ id: g.id, name: g.name, members: g.members.length, last: (db.msgs['g:' + g.id] || []).slice(-1)[0] || null }));
+      return J(res, 200, { groups });
+    }
+    if (M === 'POST' && p === '/api/groups') {
+      const b = await body(req), name = String(b.name || '').trim().slice(0, 40);
+      const members = [...new Set((Array.isArray(b.members) ? b.members : []).map(x => String(x).toLowerCase()).filter(x => db.users[x] && x !== me))].slice(0, 49);
+      if (!name) return J(res, 400, { error: 'Grup adı gerekli' });
+      if (!members.length) return J(res, 400, { error: 'En az bir kişi eklemelisin' });
+      const id = crypto.randomBytes(9).toString('hex'), group = { id, name, owner: me, members: [me, ...members], created: Date.now() };
+      db.groups[id] = group; db.msgs['g:' + id] = []; save();
+      for (const u of group.members) push(u, { type: 'groups' });
+      return J(res, 200, { group: { id, name, members: group.members.length } });
+    }
+    if (M === 'GET' && (m = /^\/api\/groups\/([^/]+)\/messages$/.exec(p))) {
+      const id = decodeURIComponent(m[1]), g = db.groups[id];
+      if (!g || !g.members.includes(me)) return J(res, 404, { error: 'Grup bulunamadı' });
+      return J(res, 200, { msgs: (db.msgs['g:' + id] || []).slice(-300), group: { id, name: g.name, members: g.members.length } });
+    }
+    if ((M === 'POST' || M === 'PATCH' || M === 'DELETE') && (m = /^\/api\/groups\/([^/]+)\/messages(?:\/([0-9]+))?$/.exec(p))) {
+      const id = decodeURIComponent(m[1]), g = db.groups[id];
+      if (!g || !g.members.includes(me)) return J(res, 404, { error: 'Grup bulunamadı' });
+      const arr = db.msgs['g:' + id] || (db.msgs['g:' + id] = []);
+      if (M === 'POST') {
+        const t = String((await body(req)).t || '').trim().slice(0, 2000);
+        if (!t) return J(res, 400, { error: 'Boş mesaj' });
+        const msg = { id: ++db.seq, f: me, t, ts: Date.now() }; arr.push(msg);
+        if (arr.length > 3000) arr.splice(0, arr.length - 3000);
+        save(); for (const u of g.members) push(u, { type: 'groupmsg', group: id, m: msg });
+        return J(res, 200, { m: msg });
+      }
+      const msg = arr.find(x => x.id === Number(m[2]));
+      if (!msg || msg.f !== me) return J(res, 403, { error: 'Bu mesaj üzerinde işlem yapamazsın' });
+      if (M === 'PATCH') { const t = String((await body(req)).t || '').trim().slice(0, 2000); if (!t) return J(res, 400, { error: 'Boş mesaj' }); msg.t = t; msg.edited = true; }
+      else arr.splice(arr.indexOf(msg), 1);
+      save(); for (const u of g.members) push(u, { type: 'groupchange', group: id });
+      return J(res, 200, { message: msg });
+    }
+
     if (M === 'GET' && p === '/api/users') return J(res, 200, { users: listFor(me) });
     if (M === 'GET' && p === '/api/stream') {
       if (url.searchParams.get('u') !== me) { res.writeHead(409); return res.end(); }
@@ -199,6 +244,16 @@ const server = http.createServer(async (req, res) => {
         (db.reads[me] = db.reads[me] || {})[other] = msg.id; save();
         const ev = { type: 'msg', to: other, m: msg }; push(other, ev); push(me, ev); return J(res, 200, { m: msg });
       }
+    }
+    if ((M === 'PATCH' || M === 'DELETE') && (m = /^\/api\/messages\/([^/]+)\/([0-9]+)$/.exec(p))) {
+      const other = decodeURIComponent(m[1]);
+      if (!db.users[other] || other === me) return J(res, 404, { error: 'Kullanıcı bulunamadı' });
+      const arr = db.msgs[key(me, other)] || [], msg = arr.find(x => x.id === Number(m[2]));
+      if (!msg || msg.f !== me) return J(res, 403, { error: 'Bu mesaj üzerinde işlem yapamazsın' });
+      if (M === 'PATCH') { const t = String((await body(req)).t || '').trim().slice(0, 2000); if (!t) return J(res, 400, { error: 'Boş mesaj' }); msg.t = t; msg.edited = true; }
+      else arr.splice(arr.indexOf(msg), 1);
+      save(); push(other, { type: 'change', other: me }); push(me, { type: 'change', other });
+      return J(res, 200, { message: msg });
     }
     if (M === 'PUT' && p === '/api/profile') {
       const b = await body(req);
@@ -236,6 +291,7 @@ const server = http.createServer(async (req, res) => {
       delete db.users[me]; dropSessions(me); delete db.reads[me]; delete db.follows[me];
       for (const k in db.follows) db.follows[k] = db.follows[k].filter(x => x !== me);
       for (const k of Object.keys(db.msgs)) if (k.split('|').includes(me)) delete db.msgs[k];
+      for (const [id, g] of Object.entries(db.groups || {})) { g.members = g.members.filter(x => x !== me); if (!g.members.length) { delete db.groups[id]; delete db.msgs['g:' + id]; } }
       for (const r of clients.get(me) || []) r.end(); clients.delete(me);
       cookie(res, '', 0, req); save(); broadcast({ type: 'user' }); return J(res, 200, {});
     }
