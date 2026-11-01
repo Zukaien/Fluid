@@ -13,7 +13,7 @@ const GIF_RE = /^https:\/\/(media\d*|i)\.giphy\.com\//, clampN = v => Math.max(5
 const CSP = "default-src 'self'; img-src 'self' data: https://*.giphy.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
 
 fs.mkdirSync(DATA, { recursive: true });
-let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, arch: {}, imgs: {}, seq: 0 };
+let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, arch: {}, imgs: {}, stories: {}, seq: 0 };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 let timer = null;
 const flushFile = () => { const t = FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(db)); fs.renameSync(t, FILE); };
@@ -31,7 +31,7 @@ async function rpipe(cmds) {
 const shards = () => {
   const out = {}, users = {};
   for (const u in db.users) { const { avatar, ...rest } = db.users[u]; users[u] = rest; if (avatar) out['fluid:av:' + u] = avatar; }
-  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), imgs: Object.keys(db.imgs), follows: db.follows, groups: db.groups, arch: db.arch });
+  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), imgs: Object.keys(db.imgs), follows: db.follows, groups: db.groups, arch: db.arch, stories: db.stories });
   for (const k in db.msgs) out['fluid:msg:' + k] = JSON.stringify(db.msgs[k]);
   for (const k in db.imgs) out['fluid:img:' + k] = db.imgs[k];
   return out;
@@ -52,7 +52,7 @@ async function loadRemote() {
     const core = JSON.parse(raw), names = Object.keys(core.users || {}), convs = core.convs || [], res = [];
     const imgs = core.imgs || [], cmds = [...names.map(u => ['GET', 'fluid:av:' + u]), ...convs.map(k => ['GET', 'fluid:msg:' + k]), ...imgs.map(k => ['GET', 'fluid:img:' + k])];
     for (let i = 0; i < cmds.length; i += 50) res.push(...await rpipe(cmds.slice(i, i + 50)));
-    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, groups: core.groups || {}, arch: core.arch || {}, seq: core.seq || 0, msgs: {}, imgs: {} };
+    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, groups: core.groups || {}, arch: core.arch || {}, stories: core.stories || {}, seq: core.seq || 0, msgs: {}, imgs: {} };
     names.forEach((u, i) => { db.users[u].avatar = res[i] || ''; });
     convs.forEach((k, i) => { db.msgs[k] = JSON.parse(res[names.length + i] || '[]'); });
     imgs.forEach((k, i) => { const v = res[names.length + convs.length + i]; if (v) db.imgs[k] = v; });
@@ -141,6 +141,20 @@ const push = (u, ev) => { for (const r of clients.get(u) || []) r.write(`data: $
 const broadcast = ev => { for (const u of clients.keys()) push(u, ev); };
 setInterval(() => { for (const s of clients.values()) for (const r of s) r.write(':\n\n'); }, 25000);
 
+// ---- hikayeler: yalnızca fotoğraf. 24 saat dolunca kayıt VE görsel veritabanından tamamen silinir ----
+const STORY_MS = DAY, STORY_MAX = 15;
+const pushStory = o => { for (const u of clients.keys()) if (u === o || (db.follows[u] || []).includes(o)) push(u, { type: 'story' }); };
+function sweepStories() {
+  const owners = new Set();
+  for (const id of Object.keys(db.stories)) {
+    const s = db.stories[id];
+    if (Date.now() - s.ts < STORY_MS && db.users[s.u]) continue;
+    rmImgs([s]); delete db.stories[id]; owners.add(s.u);
+  }
+  if (owners.size) { save(); owners.forEach(pushStory); }
+}
+setInterval(sweepStories, 6e4);
+
 const J = (res, code, o) => { res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(o)); };
 const body = req => new Promise((ok, no) => { let n = 0; const c = [];
   req.on('data', d => { n += d.length; if (n > 1.5e6) { no(new Error('big')); req.destroy(); } else c.push(d); });
@@ -224,6 +238,36 @@ const server = http.createServer(async (req, res) => {
       const t = decodeURIComponent(m[1]); if (!db.users[t] || t === me) return J(res, 404, { error: 'Kullanıcı bulunamadı' });
       const set = new Set(db.follows[me] || []); if (M === 'POST') set.add(t); else set.delete(t);
       db.follows[me] = [...set]; save(); push(me, { type: 'user' }); return J(res, 200, { following: set.has(t) });
+    }
+    if (M === 'GET' && p === '/api/stories') {
+      sweepStories();
+      const vis = new Set([me, ...(db.follows[me] || [])].filter(x => db.users[x])), by = {};
+      for (const s of Object.values(db.stories)) if (vis.has(s.u)) (by[s.u] = by[s.u] || []).push({ id: s.id, ts: s.ts, i: s.i, seen: s.u === me || s.v.includes(me), ...(s.u === me ? { views: s.v } : {}) });
+      return J(res, 200, { groups: Object.keys(by).map(u => ({ u, av: db.users[u].av, items: by[u].sort((a, b) => a.ts - b.ts) })) });
+    }
+    if (M === 'POST' && p === '/api/stories') {
+      const w = wait(['st:' + me, 30]); if (w) return tooMany(res, w);
+      const b = await body(req);
+      const im = typeof b.img === 'string' && b.img.length < 7e5 && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(b.img) && Buffer.from(b.img.slice(23, 31), 'base64')[0] === 0xff ? b.img.slice(23) : null;
+      if (!im) return J(res, 400, { error: 'Geçersiz fotoğraf' });
+      sweepStories();
+      if (Object.values(db.stories).filter(s => s.u === me).length >= STORY_MAX) return J(res, 400, { error: 'Çok fazla aktif hikaye var' });
+      strike('st:' + me);
+      const id = crypto.randomBytes(12).toString('hex'), iid = crypto.randomBytes(12).toString('hex');
+      db.imgs[iid] = im; db.stories[id] = { id, u: me, ts: Date.now(), i: iid, v: [] };
+      save(); pushStory(me); return J(res, 200, {});
+    }
+    if ((m = /^\/api\/stories\/([a-f0-9]{24})(\/view)?$/.exec(p))) {
+      const s = db.stories[m[1]]; if (!s || Date.now() - s.ts >= STORY_MS) return J(res, 404, { error: 'Hikaye bulunamadı' });
+      if (M === 'DELETE' && !m[2]) {
+        if (s.u !== me) return J(res, 403, { error: 'Bu işleme izin verilmedi.' });
+        rmImgs([s]); delete db.stories[s.id]; save(); pushStory(me); return J(res, 200, {});
+      }
+      if (M === 'POST' && m[2]) {
+        if (s.u !== me && !(db.follows[me] || []).includes(s.u)) return J(res, 404, { error: 'Hikaye bulunamadı' });
+        if (s.u !== me && !s.v.includes(me)) { s.v.push(me); save(); pushStory(me); }
+        return J(res, 200, {});
+      }
     }
     if (M === 'GET' && p === '/api/gifs') {
       if (!GIPHY_KEY) return J(res, 503, { error: 'GIF servisi ayarlanmamış' });
@@ -348,6 +392,7 @@ const server = http.createServer(async (req, res) => {
     if (M === 'POST' && p === '/api/delete') {
       const b = await body(req), pk = 'pw:' + me, w = wait([pk, 8]); if (w) return tooMany(res, w);
       if (!okPass(U, String(b.p || ''))) { strike(pk); return J(res, 403, { error: 'Şifre hatalı' }); }
+      for (const s of Object.values(db.stories)) if (s.u === me) { rmImgs([s]); delete db.stories[s.id]; }
       delete db.users[me]; dropSessions(me); delete db.reads[me]; delete db.follows[me];
       for (const k in db.follows) db.follows[k] = db.follows[k].filter(x => x !== me);
       for (const g of Object.values(db.groups)) if (g.members.includes(me)) { g.members = g.members.filter(x => x !== me); if (!g.members.length) dropGroup(g.id); else if (g.owner === me) g.owner = g.members[0]; }
@@ -366,7 +411,7 @@ const server = http.createServer(async (req, res) => {
 (async () => {
   if (REMOTE) { try { await loadRemote(); } catch (e) { console.error('Uzak veritabanına bağlanılamadı, veri kaybı olmaması için sunucu başlatılmadı:', e.message); process.exit(1); } }
   if (process.argv[2] === 'reset') return reset();
-  sweepArchives();
+  sweepArchives(); sweepStories();
   server.listen(PORT, HOST, () => console.log(`❄  Fluid çalışıyor → http://localhost:${PORT}  (veri: ${REMOTE ? 'Upstash Redis' : FILE})${INVITE ? '  [davet kodu aktif]' : ''}`));
 })();
 for (const s of ['SIGINT', 'SIGTERM']) process.on(s, async () => {
