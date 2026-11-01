@@ -4,7 +4,7 @@
 const http = require('http'), fs = require('fs'), path = require('path'), crypto = require('crypto');
 const PORT = +process.env.PORT || 3000, HOST = process.env.HOST || '0.0.0.0';
 const DATA = process.env.DATA_DIR || path.join(__dirname, 'data'), FILE = path.join(DATA, 'db.json');
-const INVITE = process.env.INVITE_CODE || '', TRUST = process.env.TRUST_PROXY === '1';
+const INVITE = process.env.INVITE_CODE || '', TRUST = process.env.TRUST_PROXY === '1' || !!process.env.RENDER;
 const DAY = 864e5, SESS = 30 * DAY, NAME = /^[a-z0-9_]{3,16}$/;
 const ACCENTS = ['ice', 'violet', 'mint', 'rose'];
 const DEF = { accent: 'ice', snow: true, calm: false, sound: true, notify: false, showOnline: true };
@@ -14,7 +14,54 @@ fs.mkdirSync(DATA, { recursive: true });
 let db = { users: {}, msgs: {}, reads: {}, sessions: {}, seq: 0 };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 let timer = null;
-const flush = () => { clearTimeout(timer); timer = null; const t = FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(db)); fs.renameSync(t, FILE); };
+const flushFile = () => { const t = FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(db)); fs.renameSync(t, FILE); };
+
+// ---- isteğe bağlı uzak kayıt: Upstash Redis (ücretsiz plan) ----
+// UPSTASH_REDIS_REST_URL ve UPSTASH_REDIS_REST_TOKEN tanımlıysa veriler orada saklanır (Render gibi dosyaları silen sunucular için).
+const RURL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, ''), RTOK = process.env.UPSTASH_REDIS_REST_TOKEN || '', REMOTE = !!(RURL && RTOK);
+let ready = !REMOTE, remoteState = {};
+async function rpipe(cmds) {
+  const r = await fetch(RURL + '/pipeline', { method: 'POST', headers: { Authorization: 'Bearer ' + RTOK, 'Content-Type': 'application/json' }, body: JSON.stringify(cmds), signal: AbortSignal.timeout(15000) });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  const a = await r.json(), bad = a.find(x => x.error); if (bad) throw new Error(bad.error);
+  return a.map(x => x.result);
+}
+const shards = () => {
+  const out = {}, users = {};
+  for (const u in db.users) { const { avatar, ...rest } = db.users[u]; users[u] = rest; if (avatar) out['fluid:av:' + u] = avatar; }
+  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs) });
+  for (const k in db.msgs) out['fluid:msg:' + k] = JSON.stringify(db.msgs[k]);
+  return out;
+};
+async function pushRemote() {
+  if (!ready) return;
+  const sh = shards(), cmds = [];
+  for (const k in sh) if (remoteState[k] !== sh[k]) cmds.push(['SET', k, sh[k]]);
+  for (const k in remoteState) if (!(k in sh)) cmds.push(['DEL', k]);
+  let batch = [], size = 0;
+  const send = async () => { if (batch.length) { await rpipe(batch); batch = []; size = 0; } };
+  for (const c of cmds) { const n = (c[2] || '').length; if (size + n > 4e5) await send(); batch.push(c); size += n; }
+  await send(); remoteState = sh;
+}
+async function loadRemote() {
+  const raw = (await rpipe([['GET', 'fluid:core']]))[0];
+  if (raw) {
+    const core = JSON.parse(raw), names = Object.keys(core.users || {}), convs = core.convs || [], res = [];
+    const cmds = [...names.map(u => ['GET', 'fluid:av:' + u]), ...convs.map(k => ['GET', 'fluid:msg:' + k])];
+    for (let i = 0; i < cmds.length; i += 50) res.push(...await rpipe(cmds.slice(i, i + 50)));
+    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, seq: core.seq || 0, msgs: {} };
+    names.forEach((u, i) => { db.users[u].avatar = res[i] || ''; });
+    convs.forEach((k, i) => { db.msgs[k] = JSON.parse(res[names.length + i] || '[]'); });
+    remoteState = shards();
+  } else console.log('Uzak veritabanı boş, mevcut veriyle başlanıyor.');
+  ready = true;
+}
+let busy = false, again = false;
+async function kick() {
+  again = true; if (busy) return; busy = true;
+  try { while (again) { again = false; try { await pushRemote(); } catch (e) { console.error('Uzak kayıt hatası:', e.message); setTimeout(() => { if (!timer) save(); }, 5000); } } } finally { busy = false; }
+}
+const flush = () => { clearTimeout(timer); timer = null; if (REMOTE) kick(); else flushFile(); };
 const save = () => { if (!timer) timer = setTimeout(flush, 300); };
 
 // ---- şifre & oturum ----
@@ -30,9 +77,13 @@ function auth(req) { const k = sessKey(req), s = k && db.sessions[k]; if (!s) re
 const dropSessions = (u, keep) => { for (const k in db.sessions) if (db.sessions[k].u === u && k !== keep) delete db.sessions[k]; };
 setInterval(() => { for (const k in db.sessions) if (db.sessions[k].exp < Date.now()) delete db.sessions[k]; save(); }, 36e5);
 
-const tries = new Map();
-const limited = ip => { const now = Date.now(), a = (tries.get(ip) || []).filter(t => now - t < 6e5); tries.set(ip, a); return a.length >= 10; };
-const strike = ip => (tries.get(ip) || tries.set(ip, []).get(ip)).push(Date.now());
+// Deneme sınırı: IP başına geniş, hesap başına dar. Süre dolunca kendiliğinden açılır.
+const tries = new Map(), WIN = 6e5;
+const bucket = k => { const now = Date.now(), a = (tries.get(k) || []).filter(t => now - t < WIN); tries.set(k, a); return a; };
+const wait = (...rules) => { let w = 0; for (const [k, max] of rules) { const a = bucket(k); if (a.length >= max) w = Math.max(w, Math.ceil((a[0] + WIN - Date.now()) / 6e4)); } return w; };
+const strike = (...ks) => ks.forEach(k => bucket(k).push(Date.now()));
+const tooMany = (res, w) => J(res, 429, { error: 'Çok fazla deneme, biraz bekle', wait: w });
+setInterval(() => { for (const k of [...tries.keys()]) if (!bucket(k).length) tries.delete(k); }, WIN);
 
 // ---- yardımcılar ----
 const key = (a, b) => [a, b].sort().join('|');
@@ -58,10 +109,12 @@ const body = req => new Promise((ok, no) => { let n = 0; const c = [];
 });
 
 // ---- komut satırından şifre sıfırlama ----
-if (process.argv[2] === 'reset') {
+async function reset() {
   const [u, pw] = [String(process.argv[3] || '').toLowerCase(), process.argv[4] || ''];
   if (!db.users[u] || pw.length < 6) { console.log('Kullanım: node server.js reset <kullanici> <en-az-6-karakter>'); process.exit(1); }
-  Object.assign(db.users[u], mkPass(pw)); dropSessions(u); flush(); console.log(`✔ ${u} için şifre güncellendi.`); process.exit(0);
+  Object.assign(db.users[u], mkPass(pw)); dropSessions(u);
+  if (REMOTE) await pushRemote(); else flushFile();
+  console.log(`✔ ${u} için şifre güncellendi.`); process.exit(0);
 }
 
 const server = http.createServer(async (req, res) => {
@@ -75,9 +128,9 @@ const server = http.createServer(async (req, res) => {
 
     if (p === '/api/config') return J(res, 200, { invite: !!INVITE });
     if (M === 'POST' && p === '/api/register') {
-      const b = await body(req); if (limited(ip)) return J(res, 429, { error: 'Çok fazla deneme, biraz bekle' });
+      const b = await body(req), w = wait(['ip:' + ip, 60], ['inv:' + ip, 10]); if (w) return tooMany(res, w);
       const u = String(b.u || '').toLowerCase(), pw = String(b.p || '');
-      if (INVITE && b.invite !== INVITE) { strike(ip); return J(res, 403, { error: 'Davet kodu hatalı' }); }
+      if (INVITE && b.invite !== INVITE) { strike('inv:' + ip, 'ip:' + ip); return J(res, 403, { error: 'Davet kodu hatalı' }); }
       if (!NAME.test(u)) return J(res, 400, { error: 'Kullanıcı adı: 3–16 harf/rakam/_' });
       if (pw.length < 6 || pw.length > 200) return J(res, 400, { error: 'Şifre en az 6 karakter olmalı' });
       if (db.users[u]) return J(res, 409, { error: 'Bu kullanıcı adı alınmış' });
@@ -85,10 +138,11 @@ const server = http.createServer(async (req, res) => {
       newSession(u, req, res); save(); broadcast({ type: 'user' }); return J(res, 200, { me: meOf(u) });
     }
     if (M === 'POST' && p === '/api/login') {
-      const b = await body(req); if (limited(ip)) return J(res, 429, { error: 'Çok fazla deneme, biraz bekle' });
-      const u = String(b.u || '').toLowerCase(), o = db.users[u];
-      if (!o || !okPass(o, String(b.p || ''))) { strike(ip); return J(res, 401, { error: 'Kullanıcı adı veya şifre hatalı' }); }
-      tries.delete(ip); newSession(u, req, res); return J(res, 200, { me: meOf(u) });
+      const b = await body(req), u = String(b.u || '').toLowerCase(), uk = 'u:' + ip + ':' + u.slice(0, 32);
+      const w = wait(['ip:' + ip, 60], [uk, 8]); if (w) return tooMany(res, w);
+      const o = db.users[u];
+      if (!o || !okPass(o, String(b.p || ''))) { strike('ip:' + ip, uk); return J(res, 401, { error: 'Kullanıcı adı veya şifre hatalı' }); }
+      tries.delete(uk); newSession(u, req, res); return J(res, 200, { me: meOf(u) });
     }
 
     const me = auth(req); if (!me) return J(res, 401, { error: 'Oturum gerekli' });
@@ -121,7 +175,7 @@ const server = http.createServer(async (req, res) => {
       if (M === 'POST' && m[1] === 'messages') {
         const t = String((await body(req)).t || '').trim().slice(0, 2000); if (!t) return J(res, 400, { error: 'Boş mesaj' });
         const msg = { id: ++db.seq, f: me, t, ts: Date.now() };
-        const list = db.msgs[key(me, other)] = arr; list.push(msg); if (list.length > 5000) list.splice(0, list.length - 5000);
+        const list = db.msgs[key(me, other)] = arr; list.push(msg); if (list.length > 3000) list.splice(0, list.length - 3000);
         (db.reads[me] = db.reads[me] || {})[other] = msg.id; save();
         const ev = { type: 'msg', to: other, m: msg }; push(other, ev); push(me, ev); return J(res, 200, { m: msg });
       }
@@ -149,16 +203,16 @@ const server = http.createServer(async (req, res) => {
       save(); if ('showOnline' in b) broadcast({ type: 'presence' }); return J(res, 200, { settings: s });
     }
     if (M === 'POST' && p === '/api/password') {
-      const b = await body(req); if (limited(ip)) return J(res, 429, { error: 'Çok fazla deneme, biraz bekle' });
-      if (!okPass(U, String(b.old || ''))) { strike(ip); return J(res, 403, { error: 'Mevcut şifre hatalı' }); }
+      const b = await body(req), pk = 'pw:' + me, w = wait([pk, 8]); if (w) return tooMany(res, w);
+      if (!okPass(U, String(b.old || ''))) { strike(pk); return J(res, 403, { error: 'Mevcut şifre hatalı' }); }
       const n = String(b.new || ''); if (n.length < 6 || n.length > 200) return J(res, 400, { error: 'Yeni şifre en az 6 karakter olmalı' });
       Object.assign(U, mkPass(n)); dropSessions(me, sessKey(req)); save(); return J(res, 200, {});
     }
     if (M === 'POST' && p === '/api/logout') { delete db.sessions[sessKey(req)]; cookie(res, '', 0, req); save(); return J(res, 200, {}); }
     if (M === 'POST' && p === '/api/logout-all') { dropSessions(me); cookie(res, '', 0, req); save(); return J(res, 200, {}); }
     if (M === 'POST' && p === '/api/delete') {
-      const b = await body(req); if (limited(ip)) return J(res, 429, { error: 'Çok fazla deneme, biraz bekle' });
-      if (!okPass(U, String(b.p || ''))) { strike(ip); return J(res, 403, { error: 'Şifre hatalı' }); }
+      const b = await body(req), pk = 'pw:' + me, w = wait([pk, 8]); if (w) return tooMany(res, w);
+      if (!okPass(U, String(b.p || ''))) { strike(pk); return J(res, 403, { error: 'Şifre hatalı' }); }
       delete db.users[me]; dropSessions(me); delete db.reads[me];
       for (const k of Object.keys(db.msgs)) if (k.split('|').includes(me)) delete db.msgs[k];
       for (const r of clients.get(me) || []) r.end(); clients.delete(me);
@@ -172,5 +226,13 @@ const server = http.createServer(async (req, res) => {
     if (!res.headersSent) J(res, big ? 413 : bad ? 400 : 500, { error: msg }); else res.end();
   }
 });
-server.listen(PORT, HOST, () => console.log(`❄  Fluid çalışıyor → http://localhost:${PORT}  (veri: ${FILE})${INVITE ? '  [davet kodu aktif]' : ''}`));
-for (const s of ['SIGINT', 'SIGTERM']) process.on(s, () => { flush(); process.exit(0); });
+(async () => {
+  if (REMOTE) { try { await loadRemote(); } catch (e) { console.error('Uzak veritabanına bağlanılamadı, veri kaybı olmaması için sunucu başlatılmadı:', e.message); process.exit(1); } }
+  if (process.argv[2] === 'reset') return reset();
+  server.listen(PORT, HOST, () => console.log(`❄  Fluid çalışıyor → http://localhost:${PORT}  (veri: ${REMOTE ? 'Upstash Redis' : FILE})${INVITE ? '  [davet kodu aktif]' : ''}`));
+})();
+for (const s of ['SIGINT', 'SIGTERM']) process.on(s, async () => {
+  clearTimeout(timer);
+  try { if (REMOTE) await Promise.race([pushRemote(), new Promise(r => setTimeout(r, 8000))]); else flushFile(); } catch (e) { console.error(e.message); }
+  process.exit(0);
+});
