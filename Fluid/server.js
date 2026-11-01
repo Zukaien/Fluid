@@ -8,10 +8,12 @@ const INVITE = process.env.INVITE_CODE || '', TRUST = process.env.TRUST_PROXY ==
 const DAY = 864e5, SESS = 30 * DAY, NAME = /^[a-z0-9_]{3,16}$/;
 const ACCENTS = ['ice', 'violet', 'mint', 'rose'];
 const DEF = { accent: 'ice', snow: true, calm: false, sound: true, notify: false, showOnline: true };
-const CSP = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
+const GIPHY_KEY = process.env.GIPHY_API_KEY || '', GIPHY_BASE = process.env.GIPHY_BASE || 'https://api.giphy.com/v1/gifs/';
+const GIF_RE = /^https:\/\/(media\d*|i)\.giphy\.com\//, clampN = v => Math.max(50, Math.min(600, Math.round(+v) || 200));
+const CSP = "default-src 'self'; img-src 'self' data: https://*.giphy.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
 
 fs.mkdirSync(DATA, { recursive: true });
-let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, seq: 0 };
+let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, arch: {}, seq: 0 };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 let timer = null;
 const flushFile = () => { const t = FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(db)); fs.renameSync(t, FILE); };
@@ -29,7 +31,7 @@ async function rpipe(cmds) {
 const shards = () => {
   const out = {}, users = {};
   for (const u in db.users) { const { avatar, ...rest } = db.users[u]; users[u] = rest; if (avatar) out['fluid:av:' + u] = avatar; }
-  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), follows: db.follows, groups: db.groups });
+  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), follows: db.follows, groups: db.groups, arch: db.arch });
   for (const k in db.msgs) out['fluid:msg:' + k] = JSON.stringify(db.msgs[k]);
   return out;
 };
@@ -49,7 +51,7 @@ async function loadRemote() {
     const core = JSON.parse(raw), names = Object.keys(core.users || {}), convs = core.convs || [], res = [];
     const cmds = [...names.map(u => ['GET', 'fluid:av:' + u]), ...convs.map(k => ['GET', 'fluid:msg:' + k])];
     for (let i = 0; i < cmds.length; i += 50) res.push(...await rpipe(cmds.slice(i, i + 50)));
-    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, groups: core.groups || {}, seq: core.seq || 0, msgs: {} };
+    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, groups: core.groups || {}, arch: core.arch || {}, seq: core.seq || 0, msgs: {} };
     names.forEach((u, i) => { db.users[u].avatar = res[i] || ''; });
     convs.forEach((k, i) => { db.msgs[k] = JSON.parse(res[names.length + i] || '[]'); });
     remoteState = shards();
@@ -99,16 +101,39 @@ function listFor(me) {
     const o = db.users[x], m = db.msgs[key(me, x)] || [];
     if (!fol.has(x) && !m.length) continue;
     const l = m[m.length - 1], last = r[x] || 0;
-    out.push({ u: x, bio: o.bio, av: o.av, note: fol.has(x) ? noteOf(o) : null, online: isOnline(x), following: fol.has(x), unread: m.filter(z => z.f === x && z.id > last).length, last: l ? { t: l.t, ts: l.ts, f: l.f } : null });
+    out.push({ u: x, bio: o.bio, av: o.av, note: fol.has(x) ? noteOf(o) : null, online: isOnline(x), following: fol.has(x), arch: archOf(key(me, x), me), unread: m.filter(z => z.f === x && z.id > last && !z.d).length, last: l ? { t: l.d ? '' : l.t, ts: l.ts, f: l.f, g: !!l.g, d: !!l.d } : null });
   }
   return out;
 }
+// ---- sınırsız geçmiş: her ARCH_N mesajda eski mesajlar indirilebilir, sonra temizlenir ----
+const ARCH_N = +process.env.ARCHIVE_COUNT || 3000, ARCH_MS = (+process.env.ARCHIVE_DAYS || 3) * DAY;
+const members = ck => ck.startsWith('g:') ? ((db.groups[ck.slice(2)] || {}).members || []) : ck.split('|');
+const archOf = (ck, me) => { const a = db.arch[ck]; return a ? { n: a.n, deadline: a.at + ARCH_MS, done: a.dl.includes(me) } : null; };
+function checkArchive(ck) {
+  const l = db.msgs[ck]; if (!l || db.arch[ck]) return;
+  if (l.length < ARCH_N && l.reduce((s, x) => s + x.t.length + 60, 0) < 6e5) return;
+  const n = l.length >= ARCH_N ? ARCH_N : Math.ceil(l.length / 2);
+  db.arch[ck] = { upto: l[n - 1].id, n, at: Date.now(), dl: [] };
+  for (const u of members(ck)) push(u, { type: 'user' });
+}
+function sweepArchives() {
+  let ch = false;
+  for (const ck of Object.keys(db.arch)) {
+    const a = db.arch[ck], mem = members(ck);
+    if (mem.length && Date.now() - a.at < ARCH_MS && !mem.every(u => a.dl.includes(u) || !db.users[u])) continue;
+    db.msgs[ck] = (db.msgs[ck] || []).filter(x => x.id > a.upto); delete db.arch[ck]; ch = true;
+    checkArchive(ck); for (const u of mem) push(u, { type: 'user' });
+  }
+  if (ch) save();
+}
+setInterval(sweepArchives, 6e4);
+
 // ---- gruplar ----
 const groupOf = (g, me) => { const k = 'g:' + g.id, m = db.msgs[k] || [], l = m[m.length - 1], last = (db.reads[me] || {})[k] || 0;
   return { id: g.id, name: g.name, owner: g.owner, members: g.members.map(u => ({ u, av: db.users[u] ? db.users[u].av : 0 })),
-    unread: m.filter(z => z.f !== me && z.id > last).length, last: l ? { t: l.t, ts: l.ts, f: l.f } : null }; };
+    unread: m.filter(z => z.f !== me && z.id > last && !z.d).length, last: l ? { t: l.d ? '' : l.t, ts: l.ts, f: l.f, g: !!l.g, d: !!l.d } : null, arch: archOf(k, me) }; };
 const groupsFor = me => Object.values(db.groups).filter(g => g.members.includes(me)).map(g => groupOf(g, me));
-function dropGroup(id) { delete db.groups[id]; delete db.msgs['g:' + id]; for (const u in db.reads) delete db.reads[u]['g:' + id]; }
+function dropGroup(id) { delete db.groups[id]; delete db.msgs['g:' + id]; delete db.arch['g:' + id]; for (const u in db.reads) delete db.reads[u]['g:' + id]; }
 const push = (u, ev) => { for (const r of clients.get(u) || []) r.write(`data: ${JSON.stringify(ev)}\n\n`); };
 const broadcast = ev => { for (const u of clients.keys()) push(u, ev); };
 setInterval(() => { for (const s of clients.values()) for (const r of s) r.write(':\n\n'); }, 25000);
@@ -128,6 +153,17 @@ async function reset() {
   console.log(`✔ ${u} için şifre güncellendi.`); process.exit(0);
 }
 
+const gifCache = new Map();
+async function gifs(q) {
+  const ck = q.toLowerCase(), c = gifCache.get(ck); if (c && Date.now() - c.t < 6e5) return c.d;
+  const u = new URL(GIPHY_BASE + (q ? 'search' : 'trending'));
+  u.search = new URLSearchParams({ api_key: GIPHY_KEY, limit: '24', rating: 'pg-13', ...(q ? { q } : {}) });
+  const r = await fetch(u, { signal: AbortSignal.timeout(8000) }); if (!r.ok) throw new Error('giphy ' + r.status);
+  const j = await r.json(), d = (j.data || []).map(g => { const i = g.images || {}, a = i.fixed_width || i.downsized || {}, p = i.fixed_width_small || a;
+    return { id: g.id, u: a.url, p: p.url, w: +a.width || 200, h: +a.height || 200 }; }).filter(x => x.u && x.p && GIF_RE.test(x.u) && GIF_RE.test(x.p));
+  if (gifCache.size > 200) gifCache.clear(); gifCache.set(ck, { t: Date.now(), d }); return d;
+}
+
 const server = http.createServer(async (req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'same-origin'); res.setHeader('X-Frame-Options', 'DENY');
   const url = new URL(req.url, 'http://x'), p = url.pathname, M = req.method;
@@ -137,7 +173,7 @@ const server = http.createServer(async (req, res) => {
     if (M !== 'GET' && req.headers.origin) { let ok = false; try { const h = new URL(req.headers.origin).host; ok = h === req.headers.host || h === req.headers['x-forwarded-host']; } catch (e) {} if (!ok) return J(res, 403, { error: 'Geçersiz istek' }); }
     const ip = TRUST ? ((req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress) : req.socket.remoteAddress;
 
-    if (p === '/api/config') return J(res, 200, { invite: !!INVITE });
+    if (p === '/api/config') return J(res, 200, { invite: !!INVITE, gif: !!GIPHY_KEY });
     if (M === 'POST' && p === '/api/register') {
       const b = await body(req), w = wait(['ip:' + ip, 60], ['inv:' + ip, 10]); if (w) return tooMany(res, w);
       const u = String(b.u || '').toLowerCase(), pw = String(b.p || '');
@@ -181,8 +217,21 @@ const server = http.createServer(async (req, res) => {
       const set = new Set(db.follows[me] || []); if (M === 'POST') set.add(t); else set.delete(t);
       db.follows[me] = [...set]; save(); push(me, { type: 'user' }); return J(res, 200, { following: set.has(t) });
     }
+    if (M === 'GET' && p === '/api/gifs') {
+      if (!GIPHY_KEY) return J(res, 503, { error: 'GIF servisi ayarlanmamış' });
+      const w = wait(['gf:' + me, 60]); if (w) return tooMany(res, w); strike('gf:' + me);
+      try { return J(res, 200, { gifs: await gifs(String(url.searchParams.get('q') || '').trim().slice(0, 50)) }); }
+      catch (e) { console.error('GIPHY:', e.message); return J(res, 502, { error: 'GIF servisine ulaşılamıyor' }); }
+    }
+    if (M === 'GET' && (m = /^\/api\/user\/([^/]+)$/.exec(p))) {
+      const u = decodeURIComponent(m[1]).toLowerCase(), o = db.users[u]; if (!o) return J(res, 404, { error: 'Kullanıcı bulunamadı' });
+      const isF = (db.follows[me] || []).includes(u), theirs = db.follows[u] || [];
+      return J(res, 200, { u, bio: o.bio, av: o.av, created: o.created, note: isF || u === me ? noteOf(o) : null,
+        followers: Object.values(db.follows).filter(l => l.includes(u)).length, following: theirs.length,
+        isFollowing: isF, followsMe: theirs.includes(me), online: u !== me && isF ? isOnline(u) : false });
+    }
     if (M === 'GET' && p === '/api/me') return J(res, 200, { me: meOf(me) });
-    if (M === 'GET' && p === '/api/users') return J(res, 200, { users: listFor(me), groups: groupsFor(me) });
+    if (M === 'GET' && p === '/api/users') { sweepArchives(); return J(res, 200, { users: listFor(me), groups: groupsFor(me) }); }
     if (M === 'GET' && p === '/api/stream') {
       if (url.searchParams.get('u') !== me) { res.writeHead(409); return res.end(); }
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
@@ -212,6 +261,32 @@ const server = http.createServer(async (req, res) => {
       }
       save(); for (const u of new Set([...before, ...(db.groups[g.id] ? g.members : [])])) push(u, { type: 'user' }); return J(res, 200, {});
     }
+    if (M === 'POST' && (m = /^\/api\/archive\/([^/]+)$/.exec(p))) {
+      const other = decodeURIComponent(m[1]), gk = other.startsWith('g:'), grp = gk ? db.groups[other.slice(2)] : null;
+      if (gk ? !(grp && grp.members.includes(me)) : (!db.users[other] || other === me)) return J(res, 404, { error: gk ? 'Grup bulunamadı' : 'Kullanıcı bulunamadı' });
+      const ck = gk ? other : key(me, other), a = db.arch[ck]; if (!a) return J(res, 404, { error: 'İndirilecek mesaj yok' });
+      const msgs = (db.msgs[ck] || []).filter(x => x.id <= a.upto && !x.d);
+      if (!a.dl.includes(me)) a.dl.push(me);
+      save(); sweepArchives(); return J(res, 200, { msgs });
+    }
+    if ((M === 'PUT' || M === 'DELETE') && (m = /^\/api\/messages\/([^/]+)\/(\d+)$/.exec(p))) {
+      const other = decodeURIComponent(m[1]), gk = other.startsWith('g:'), grp = gk ? db.groups[other.slice(2)] : null;
+      if (gk ? !(grp && grp.members.includes(me)) : (!db.users[other] || other === me)) return J(res, 404, { error: gk ? 'Grup bulunamadı' : 'Kullanıcı bulunamadı' });
+      const arr = db.msgs[gk ? other : key(me, other)] || [], msg = arr.find(z => z.id === +m[2]);
+      if (!msg) return J(res, 404, { error: 'Mesaj bulunamadı' });
+      if (msg.f !== me) return J(res, 403, { error: 'Sadece kendi mesajını değiştirebilirsin' });
+      if (msg.d) return J(res, 400, { error: 'Mesaj zaten silinmiş' });
+      if (M === 'PUT') {
+        const t = String((await body(req)).t || '').trim().slice(0, 2000);
+        if (msg.g) return J(res, 400, { error: 'GIF düzenlenemez' }); if (!t) return J(res, 400, { error: 'Boş mesaj' });
+        msg.t = t; msg.e = Date.now();
+      } else {
+        msg.d = 1; msg.t = ''; delete msg.g; delete msg.r; delete msg.e;
+        for (const x of arr) if (x.r && x.r.id === msg.id) { x.r.t = ''; x.r.d = 1; }
+      }
+      save(); const ev = { type: M === 'PUT' ? 'edit' : 'del', ...(gk ? { g: other } : { to: other }), m: msg };
+      for (const u of gk ? grp.members : [other, me]) push(u, ev); return J(res, 200, { m: msg });
+    }
     if ((m = /^\/api\/(messages|read)\/([^/]+)$/.exec(p))) {
       const other = decodeURIComponent(m[2]), gk = other.startsWith('g:'), grp = gk ? db.groups[other.slice(2)] : null;
       if (gk ? !(grp && grp.members.includes(me)) : (!db.users[other] || other === me)) return J(res, 404, { error: gk ? 'Grup bulunamadı' : 'Kullanıcı bulunamadı' });
@@ -219,10 +294,12 @@ const server = http.createServer(async (req, res) => {
       if (M === 'GET' && m[1] === 'messages') return J(res, 200, { msgs: arr.slice(-300) });
       if (M === 'POST' && m[1] === 'read') { (db.reads[me] = db.reads[me] || {})[other] = arr.length ? arr[arr.length - 1].id : 0; save(); return J(res, 200, {}); }
       if (M === 'POST' && m[1] === 'messages') {
-        const b = await body(req), t = String(b.t || '').trim().slice(0, 2000); if (!t) return J(res, 400, { error: 'Boş mesaj' });
-        const msg = { id: ++db.seq, f: me, t, ts: Date.now() };
-        const ro = b.r ? arr.find(z => z.id === +b.r) : null; if (ro) msg.r = { id: ro.id, f: ro.f, t: ro.t.slice(0, 120) };
-        const list = db.msgs[ck] = arr; list.push(msg); if (list.length > 3000) list.splice(0, list.length - 3000);
+        const b = await body(req), t = String(b.t || '').trim().slice(0, 2000), gx = b.gif;
+        const gif = gx && typeof gx.u === 'string' && gx.u.length < 600 && GIF_RE.test(gx.u) ? { u: gx.u, w: clampN(gx.w), h: clampN(gx.h) } : null;
+        if (!t && !gif) return J(res, 400, { error: 'Boş mesaj' });
+        const msg = { id: ++db.seq, f: me, t: gif ? '' : t, ts: Date.now() }; if (gif) msg.g = gif;
+        const ro = b.r ? arr.find(z => z.id === +b.r && !z.d) : null; if (ro) msg.r = { id: ro.id, f: ro.f, t: ro.g ? 'GIF' : ro.t.slice(0, 120) };
+        const list = db.msgs[ck] = arr; list.push(msg); checkArchive(ck);
         (db.reads[me] = db.reads[me] || {})[other] = msg.id; save();
         const ev = gk ? { type: 'msg', g: other, m: msg } : { type: 'msg', to: other, m: msg };
         for (const u of gk ? grp.members : [other, me]) push(u, ev); return J(res, 200, { m: msg });
@@ -264,7 +341,7 @@ const server = http.createServer(async (req, res) => {
       delete db.users[me]; dropSessions(me); delete db.reads[me]; delete db.follows[me];
       for (const k in db.follows) db.follows[k] = db.follows[k].filter(x => x !== me);
       for (const g of Object.values(db.groups)) if (g.members.includes(me)) { g.members = g.members.filter(x => x !== me); if (!g.members.length) dropGroup(g.id); else if (g.owner === me) g.owner = g.members[0]; }
-      for (const k of Object.keys(db.msgs)) if (k.split('|').includes(me)) delete db.msgs[k];
+      for (const k of Object.keys(db.msgs)) if (k.split('|').includes(me)) { delete db.msgs[k]; delete db.arch[k]; }
       for (const r of clients.get(me) || []) r.end(); clients.delete(me);
       cookie(res, '', 0, req); save(); broadcast({ type: 'user' }); return J(res, 200, {});
     }
@@ -279,6 +356,7 @@ const server = http.createServer(async (req, res) => {
 (async () => {
   if (REMOTE) { try { await loadRemote(); } catch (e) { console.error('Uzak veritabanına bağlanılamadı, veri kaybı olmaması için sunucu başlatılmadı:', e.message); process.exit(1); } }
   if (process.argv[2] === 'reset') return reset();
+  sweepArchives();
   server.listen(PORT, HOST, () => console.log(`❄  Fluid çalışıyor → http://localhost:${PORT}  (veri: ${REMOTE ? 'Upstash Redis' : FILE})${INVITE ? '  [davet kodu aktif]' : ''}`));
 })();
 for (const s of ['SIGINT', 'SIGTERM']) process.on(s, async () => {
