@@ -16,10 +16,13 @@ input,textarea{background:rgba(255,255,255,.05);border:1px solid var(--line);col
 input:focus,textarea:focus{border-color:var(--ice);box-shadow:0 0 0 4px rgba(var(--ar),.14),0 0 24px rgba(var(--ar),.18);background:rgba(255,255,255,.08)}
 .btn{--c1:var(--a1);--c2:var(--a2);background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.65) 50%,transparent 65%) 150% 0/250% 100% no-repeat,linear-gradient(135deg,var(--c1),var(--c2));color:#04122a;font-weight:700;padding:13px 20px;border-radius:14px;position:relative;transition:transform .3s var(--ease),box-shadow .3s var(--ease),background-position .8s var(--ease)}
 .btn:hover{transform:scale(1.045);box-shadow:0 10px 30px rgba(111,214,255,.4);background-position:-50% 0,0 0}.btn:active{transform:scale(1.01)}
+
+
 .ghost{padding:10px 16px;border-radius:12px;border:1px solid var(--line);color:var(--ice2)}.ghost:hover{background:rgba(var(--ar),.12);transform:scale(1.05)}
 .screen{position:fixed;inset:0;z-index:1;display:none}.screen.on{display:flex;animation:in .7s var(--ease)}
 @keyframes in{from{opacity:0;transform:scale(.97) translateY(18px);filter:blur(8px)}to{opacity:1;transform:none;filter:none}}
 @keyframes out{to{opacity:0;transform:scale(1.04);filter:blur(10px)}}
+/* login */
 #login{align-items:center;justify-content:center}
 .card{width:min(400px,92vw);padding:38px 32px;border-radius:28px;box-shadow:0 30px 80px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.12);display:grid;gap:14px}
 .logo{font-size:44px;font-weight:800;letter-spacing:-1px;text-align:center;background:linear-gradient(120deg,#fff,var(--ice) 40%,#a9b8ff 70%,#fff);background-size:220%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 6s linear infinite}
@@ -29,6 +32,7 @@ input:focus,textarea:focus{border-color:var(--ice);box-shadow:0 0 0 4px rgba(var
 .tabs button{flex:1;padding:10px;border-radius:11px;z-index:1;color:var(--mut)}.tabs button.on{color:#04122a;font-weight:700}
 .tabs i{position:absolute;top:4px;bottom:4px;width:calc(50% - 4px);background:linear-gradient(135deg,var(--a1),var(--a2));border-radius:11px;transition:.45s var(--ease)}
 .err{color:#ff9fb2;font-size:13px;min-height:16px;text-align:center}
+/* app */
 #app{gap:14px;padding:14px}
 .side{position:relative;z-index:5;width:76px;border-radius:24px;display:flex;flex-direction:column;align-items:center;padding:16px 0;gap:10px}
 .side .lg{font-weight:800;color:var(--ice);font-size:13px;margin-bottom:10px}
@@ -40,6 +44,7 @@ input:focus,textarea:focus{border-color:var(--ice);box-shadow:0 0 0 4px rgba(var
 .list h2{padding:20px 20px 6px;font-size:22px}
 .notes{display:flex;gap:6px;padding:76px 14px 12px;overflow-x:auto;scrollbar-width:none}
 .nt{display:grid;justify-items:center;gap:6px;min-width:96px;position:relative}.avw{cursor:pointer}
+
 .bub{position:absolute;bottom:calc(100% + 9px);left:50%;transform:translateX(-50%);background:rgba(220,245,255,.96);color:#06203d;font-size:12px;font-weight:500;padding:7px 11px;border-radius:18px;width:max-content;max-width:94px;text-align:center;line-height:1.25;box-shadow:0 6px 18px rgba(0,0,0,.3);animation:bob 3.2s ease-in-out infinite;overflow-wrap:anywhere;z-index:2}.bub:hover{animation-play-state:paused;box-shadow:0 8px 26px rgba(var(--ar),.55);filter:brightness(1.06)}
 .bub::after{content:"";position:absolute;bottom:-6px;left:50%;width:10px;height:10px;background:inherit;border-radius:50%;transform:translateX(-50%)}.bub::before{content:"";position:absolute;bottom:-12px;left:calc(50% + 6px);width:5px;height:5px;background:inherit;border-radius:50%}
 .bub.add{background:rgba(255,255,255,.1);color:var(--ice2);border:1px dashed var(--line)}
@@ -47,7 +52,6 @@ input:focus,textarea:focus{border-color:var(--ice);box-shadow:0 0 0 4px rgba(var
 .nt small{font-size:11px;color:var(--mut);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .av{width:56px;height:56px;border-radius:50%;object-fit:cover;display:grid;place-items:center;font-weight:700;font-size:20px;color:#04122a;background:linear-gradient(135deg,var(--a1),var(--a2));border:2px solid transparent;box-shadow:0 0 0 2px rgba(var(--ar),.35);flex:none;overflow:hidden;transition:.35s var(--ease)}
 .av img{width:100%;height:100%;object-fit:cover}
-.av.g{background:linear-gradient(135deg,#5fb8ff,#9b8cff)}
 .nt:hover .av,.row:hover .av{box-shadow:0 0 0 3px var(--ice),0 0 22px rgba(var(--ar),.5);transform:scale(1.05)}
 .av.s{width:46px;height:46px;font-size:17px}
 .rows{overflow-y:auto;padding:6px 10px 12px;flex:1}
@@ -59,33 +63,22 @@ input:focus,textarea:focus{border-color:var(--ice);box-shadow:0 0 0 4px rgba(var
 @keyframes bob2{50%{transform:translateY(-10px) rotate(8deg)}}
 .hd{display:flex;gap:12px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
 .hd small{display:block;color:var(--mut)}
-.hd .grp-title{cursor:pointer;display:flex;align-items:center;gap:6px}.hd .grp-title:hover{color:var(--ice)}
 .msgs{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:8px}
-.m{max-width:68%;padding:11px 15px;border-radius:20px;line-height:1.4;word-break:break-word;animation:pop .45s var(--ease);transition:.3s var(--ease);position:relative;cursor:pointer}
+.m{max-width:68%;padding:11px 15px;border-radius:20px;line-height:1.4;word-break:break-word;animation:pop .45s var(--ease);transition:.3s var(--ease)}
 .m:hover{transform:scale(1.03)}
 @keyframes pop{from{opacity:0;transform:translateY(14px) scale(.85)}}
 .m.me{align-self:flex-end;background:linear-gradient(135deg,var(--a1),var(--a2));color:#04122a;border-bottom-right-radius:6px}
 .m.th{align-self:flex-start;background:rgba(255,255,255,.09);border:1px solid var(--line);border-bottom-left-radius:6px}
 .m small{display:block;font-size:10px;opacity:.6;margin-top:3px}
-.m .edited{font-size:9px;opacity:.55;margin-left:4px;font-style:italic}
-.m .quote{font-size:11px;opacity:.72;border-left:2px solid currentColor;padding-left:7px;margin-bottom:5px;line-height:1.3;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.m.del{opacity:.55;font-style:italic}.m.del .quote{display:none}
-.m-actions{position:absolute;top:100%;right:0;margin-top:4px;background:#0d2447;border:1px solid var(--line);border-radius:12px;padding:4px;display:flex;flex-direction:column;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:130px}
-.m-actions button{padding:8px 14px;font-size:13px;text-align:left;border-radius:8px}
-.m-actions button:hover{background:rgba(var(--ar),.15)}
-.m-actions button.del{color:#ff9fb2}
-.reply-bar{display:flex;align-items:center;gap:8px;padding:8px 16px;background:rgba(var(--ar),.08);border-top:1px solid var(--line);font-size:13px;color:var(--mut);flex:none;overflow:hidden}
-.reply-bar b{color:var(--ice);flex:none}
-.reply-bar span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.reply-bar .qx{margin-left:auto;color:var(--mut);padding:2px 8px;font-size:16px;flex:none}
-.reply-bar .qx:hover{color:#ff9fb2}
 .typing{align-self:flex-start;display:flex;gap:4px;padding:12px 15px;background:rgba(255,255,255,.08);border-radius:18px}
 .typing i{width:7px;height:7px;border-radius:50%;background:var(--ice);animation:dot 1s infinite}.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
 @keyframes dot{50%{transform:translateY(-6px);opacity:.4}}
 .send{display:flex;gap:10px;padding:14px 18px;border-top:1px solid var(--line)}
 .send .btn{width:54px;padding:0}
+/* profile */
 .prof{padding:34px;overflow-y:auto;max-width:560px;margin:0 auto;width:100%;display:grid;gap:16px;justify-items:center;animation:in .6s var(--ease)}
 .big-av{width:130px;height:130px;font-size:48px;position:relative;cursor:pointer}
+
 .big-av:hover{transform:scale(1.06) rotate(-3deg)}
 .prof label{justify-self:start;color:var(--mut);font-size:13px}
 .prof>*{width:100%}.prof .big-av{width:130px}
@@ -123,6 +116,7 @@ input:focus,textarea:focus{border-color:var(--ice);box-shadow:0 0 0 4px rgba(var
 .lg2 button:hover{transform:scale(1.05);background:rgba(var(--ar),.12)}.lg2 button.on{background:linear-gradient(135deg,var(--a1),var(--a2));color:#04122a;font-weight:700;border-color:transparent}
 #login .card{position:relative}
 .nv.has::before{content:"";position:absolute;top:9px;right:calc(50% - 20px);width:9px;height:9px;border-radius:50%;background:var(--ice);box-shadow:0 0 8px var(--ice)}
+/* ---- telefon düzeni (Instagram benzeri dikey akış) ---- */
 html.mobile,.mobile body{overscroll-behavior:none}
 .mobile *{-webkit-tap-highlight-color:transparent}.mobile button{touch-action:manipulation}
 .mobile .screen{bottom:auto;height:var(--vh,100dvh)}
@@ -157,13 +151,8 @@ html.mobile,.mobile body{overscroll-behavior:none}
 .sres{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:18px;transition:.3s var(--ease)}.sres:hover{background:rgba(var(--ar),.08)}
 .sres>div:nth-child(2){min-width:0;flex:1}.sres b{display:block}.sres small{display:block;color:var(--mut);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sres .btns{display:flex;gap:8px;flex:none}.sres .ghost{padding:8px 13px;font-size:13px}.sres .fw.on{background:linear-gradient(135deg,var(--a1),var(--a2));color:#04122a;font-weight:700;border-color:transparent}
-.gp{position:fixed;inset:0;background:rgba(2,8,20,.6);backdrop-filter:blur(6px);display:grid;place-items:center;z-index:20}
-.gp .card{width:min(430px,92vw);max-height:82vh;overflow-y:auto}
-.gp-mem{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
-.gp-mem b{flex:1}.gp-mem b small{color:var(--mut);font-size:11px;margin-left:4px}
-.gp-mem .ghost{padding:4px 10px;font-size:12px;color:#ff9fb2}
-.gp-add{display:flex;gap:8px;margin-top:12px}.gp-add input{flex:1;padding:10px 14px}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px}
+
 </style></head><body>
 <canvas id="snow"></canvas>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -176,5 +165,209 @@ html.mobile,.mobile body{overscroll-behavior:none}
 <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="6.5"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></symbol>
 <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
 <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M3.8 16.75l16.4-9.5"/><path d="M9.5 4.4 12 6.7l2.5-2.3M9.5 19.6 12 17.3l2.5 2.3"/><circle cx="12" cy="12" r="1.8"/></symbol>
-<symbol id="i-reply" viewBox="0 0 24 24"><path d="M9 7 4 12l5 5"/><path d="M4 12h11a5 5 0 0 1 5 5v1"/></symbol>
-<symbol id="i-edit" viewBox="0 0 24 24"><path d
+</svg>
+
+<section class="screen" id="login"><div class="card glass"><button class="ghost" id="lgb" style="position:absolute;top:14px;right:14px;padding:6px 11px;font-size:12px">EN</button>
+  <div class="logo"><svg class="ic lgi" ><use href="#i-snow"/></svg><span>Fluid</span></div><div class="sub">Buzlu gecenin akışına katıl</div>
+  <div class="tabs"><i id="ti"></i><button class="on" id="tl">Giriş</button><button id="tr">Kayıt</button></div>
+  <input id="u" placeholder="Kullanıcı adı" autocomplete="off"><input id="p" type="password" placeholder="Şifre">
+  <input id="inv" placeholder="Davet kodu" autocomplete="off" style="display:none"><div class="err" id="err"></div><button class="btn" id="go">Giriş yap</button>
+  
+</div></section>
+
+<section class="screen" id="app">
+  <nav class="side glass"><div class="lg"><svg class="ic lgi" ><use href="#i-snow"/></svg></div>
+    <button class="nv on" data-t="Mesajlar" id="nDm"><svg class="ic" ><use href="#i-chat"/></svg></button>
+    <button class="nv" data-t="Profil" id="nPr"><svg class="ic" ><use href="#i-user"/></svg></button>
+    <button class="nv" data-t="Ayarlar" id="nSet"><svg class="ic"><use href="#i-gear"/></svg></button>
+    <button class="nv" data-t="Çıkış" id="nOut" style="margin-top:auto"><svg class="ic" ><use href="#i-power"/></svg></button></nav>
+  <aside class="list glass"><h2>Mesajlar</h2><div class="srch"><svg class="ic"><use href="#i-search"/></svg><input id="q" placeholder="Hesap ara" autocomplete="off" maxlength="16"></div><div class="notes" id="notes"></div><div class="rows" id="rows"></div></aside>
+  <main class="main glass" id="main"></main>
+</section>
+
+<div class="modal" id="nm"><div class="card glass"><h3>Not paylaş</h3>
+  <div class="sub" style="margin:0;text-align:left">24 saat görünür. Kısa tut</div>
+  <textarea id="nt" rows="3" maxlength="60" placeholder="Ne düşünüyorsun?"></textarea><div class="cnt" id="cnt">0/60</div>
+  <div class="tags"><button class="ghost" id="nDel">Notu sil</button><button class="btn" id="nOk">Paylaş</button></div>
+  <button class="ghost" id="nX">Vazgeç</button></div></div>
+<div class="modal" id="vm"><div class="card glass" style="justify-items:center;text-align:center"><div id="vav"></div><b id="vn"></b><div class="nbig" id="vt"></div><small class="tl" id="vts"></small><div class="tags" id="vb"></div></div></div>
+<input type="file" id="file" accept="image/*" hidden>
+
+<script>
+const $=s=>document.querySelector(s),DAY=864e5;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const S={me:null,users:[],cur:null,ids:new Set(),cfg:{},es:null};
+const MQ=matchMedia('(max-width:820px),(hover:none) and (pointer:coarse) and (max-width:1100px)'),isMob=()=>MQ.matches;
+const fitVH=()=>{const v=window.visualViewport;document.documentElement.style.setProperty('--vh',(v?v.height:innerHeight)+'px')};
+function setMob(){document.documentElement.classList.toggle('mobile',MQ.matches);fitVH();if(S.me){renderList();renderMain();if(S.cur&&S.cur[0]!='_')loadMsgs(S.cur)}}
+MQ.addEventListener('change',setMob);addEventListener('resize',fitVH);
+if(window.visualViewport){visualViewport.addEventListener('resize',fitVH);visualViewport.addEventListener('scroll',()=>{fitVH();if(visualViewport.offsetTop)scrollTo(0,0)})}
+const ACC={ice:['#8fe3ff','#6fd6ff','#9aa8ff','143,227,255'],violet:['#c3b3ff','#9b8cff','#6f7bff','195,179,255'],mint:['#86ffd9','#5be8c0','#5fb8ff','134,255,217'],rose:['#ffa6d5','#ff8fc0','#b79bff','255,166,213']};
+const ACN={ice:'Buz',violet:'Menekşe',mint:'Nane',rose:'Gül'};
+const EN={"Hesap ara":"Search accounts","Takip et":"Follow","Takiptesin":"Following","Mesaj":"Message","Hesap bulunamadı":"No accounts found","Aramak için en az 2 harf yaz":"Type at least 2 letters to search","Aranıyor…":"Searching…","Henüz kimse yok. Yukarıdan hesap arayıp takip et!":"Nobody here yet. Search for an account above and follow it!","Bu tarayıcıda başka bir hesaba giriş yapıldı. Sayfa yenileniyor.":"Another account was signed in on this browser. Reloading the page.","Buzlu gecenin akışına katıl": "Join the flow of the frozen night", "Giriş": "Log in", "Kayıt": "Sign up", "Kullanıcı adı": "Username", "Şifre": "Password", "Davet kodu": "Invite code", "Giriş yap": "Log in", "Hesap oluştur": "Create account", "Mesajlar": "Messages", "Profil": "Profile", "Ayarlar": "Settings", "Çıkış": "Log out", "Not paylaş": "Share a note", "24 saat görünür. Kısa tut": "Visible for 24 hours. Keep it short", "Ne düşünüyorsun?": "What’s on your mind?", "Notu sil": "Delete note", "Paylaş": "Share", "Vazgeç": "Cancel", "Kullanıcı adı: 3–16 harf/rakam/_": "Username: 3–16 letters, numbers or _", "Şifre en az 6 karakter": "Password must be at least 6 characters", "Şifre gerekli": "Password required", "Giriş başarılı ama ekran açılamadı. Sayfayı Ctrl+F5 ile yenile.": "Logged in, but the screen could not open. Refresh with Ctrl+F5.", "Sayfa yüklenirken sorun çıktı, Ctrl+F5 ile yenile.": "There was a problem loading the page. Refresh with Ctrl+F5.", "Fluid sunucusuna ulaşılamıyor. Sunucunun çalıştığından ve internetinin açık olduğundan emin ol.": "Cannot reach the Fluid server. Make sure it is running and your internet is on.", "Bu adres Fluid sunucusuna ait görünmüyor. Sayfayı dosyadan değil, sunucunun adresinden aç (örneğin http://localhost:3000).": "This address does not look like the Fluid server. Open the page from the server address (e.g. http://localhost:3000), not from a file.", "Gönderilen dosya çok büyük.": "The file is too large.", "Çok fazla deneme yaptın, birkaç dakika bekle.": "Too many attempts, wait a few minutes.", "Sunucu şu an yanıt vermiyor, biraz sonra tekrar dene.": "The server is not responding right now, try again shortly.", "Bu işleme izin verilmedi.": "This action is not allowed.", "Çok fazla deneme, biraz bekle": "Too many attempts, wait a little", "Davet kodu hatalı": "Wrong invite code", "Şifre en az 6 karakter olmalı": "Password must be at least 6 characters", "Bu kullanıcı adı alınmış": "This username is taken", "Kullanıcı adı veya şifre hatalı": "Wrong username or password", "Oturum gerekli": "Please log in", "Kullanıcı bulunamadı": "User not found", "Boş mesaj": "Empty message", "Geçersiz fotoğraf": "Invalid photo", "Not boş olamaz": "Note cannot be empty", "Mevcut şifre hatalı": "Current password is wrong", "Yeni şifre en az 6 karakter olmalı": "New password must be at least 6 characters", "Şifre hatalı": "Wrong password", "Geçersiz istek": "Invalid request", "Bulunamadı": "Not found", "Gönderilen veri okunamadı, sayfayı yenileyip tekrar dene.": "Could not read the request, refresh the page and try again.", "Sunucuda beklenmedik bir sorun oldu, biraz sonra tekrar dene.": "Something unexpected went wrong on the server, try again shortly.", "Notun": "Your note", "Kapat": "Close", "Düzenle": "Edit", "Mesaj gönder": "Send message", "+ Not": "+ Note", "Sen: ": "You: ", "Merhaba de!": "Say hi!", "Henüz kimse yok. Arkadaşlarını davet et!": "Nobody here yet. Invite your friends!", "Çevrimiçi": "Online", "Bir sohbet seç": "Pick a conversation", "Ya da birinin notuna dokun": "Or tap someone’s note", "Mesaj yaz…": "Type a message…", "Değiştir": "Change", "Biyografi": "Bio", "Kendinden bahset…": "Tell us about yourself…", "Kaydet": "Save", "Kaydedildi": "Saved", "Fotoğrafı kaldır": "Remove photo", "Görünüm": "Appearance", "Dil": "Language", "Arayüz dili": "Interface language", "Vurgu rengi": "Accent color", "Butonlar ve ışıltılar": "Buttons and glows", "Kar yağışı": "Snowfall", "Arka plandaki kar taneleri": "Snowflakes in the background", "Animasyonları azalt": "Reduce animations", "Daha sakin ve hafif arayüz": "A calmer, lighter interface", "Bildirimler": "Notifications", "Mesaj sesi": "Message sound", "Yeni mesajda kısa bir ses çal": "Play a short sound on new messages", "Masaüstü bildirimi": "Desktop notification", "Sekme arka plandayken haber ver": "Notify when the tab is in the background", "Gizlilik": "Privacy", "Çevrimiçi durumu": "Online status", "Arkadaşların seni çevrimiçi görsün": "Let friends see you online", "Güvenlik": "Security", "Mevcut şifre": "Current password", "Yeni şifre (en az 6)": "New password (min. 6)", "Şifreyi değiştir": "Change password", "Şifre güncellendi": "Password updated", "Tüm cihazlardan çıkış yap": "Log out of all devices", "Hesabı sil": "Delete account", "Mesajların ve profilin kalıcı olarak silinir.": "Your messages and profile will be permanently deleted.", "Şifreni onayla": "Confirm your password", "Hesabımı sil": "Delete my account", "Hesabın kalıcı olarak silinecek. Emin misin?": "Your account will be permanently deleted. Are you sure?", "Tarayıcı bildirim iznini vermedi": "The browser did not grant notification permission", "Buz": "Ice", "Menekşe": "Violet", "Nane": "Mint", "Gül": "Rose"};
+let LANG;try{LANG=localStorage.getItem('fl_lang')}catch(e){}LANG=LANG||((navigator.language||'').startsWith('tr')?'tr':'en');
+const t=s=>LANG=='en'&&EN[s]?EN[s]:s;
+const NOSRV='Fluid sunucusuna ulaşılamıyor. Sunucunun çalıştığından ve internetinin açık olduğundan emin ol.';
+const WRONG='Bu adres Fluid sunucusuna ait görünmüyor. Sayfayı dosyadan değil, sunucunun adresinden aç (örneğin http://localhost:3000).';
+const byStatus=c=>c==413?'Gönderilen dosya çok büyük.':c==429?'Çok fazla deneme yaptın, birkaç dakika bekle.':c>=500?'Sunucu şu an yanıt vermiyor, biraz sonra tekrar dene.':c==403?'Bu işleme izin verilmedi.':WRONG;
+const fe=(msg,st)=>{const e=new Error(t(msg));e.friendly=1;e.status=st;return e};
+async function api(m,p,b){let r;
+  try{r=await fetch('/api'+p,{method:m,headers:{...(b?{'Content-Type':'application/json'}:{}),...(S.me?{'X-Fluid-User':S.me.u}:{})},body:b?JSON.stringify(b):undefined,credentials:'same-origin'})}catch(x){throw fe(NOSRV)}
+  let d=null;try{d=await r.json()}catch(x){}
+  if(r.status==409&&S.me){alert(t('Bu tarayıcıda başka bir hesaba giriş yapıldı. Sayfa yenileniyor.'));location.reload();throw fe('')}
+  if(!r.ok){const e=fe(d&&d.error?d.error:byStatus(r.status),r.status);if(d&&d.wait)e.message+=` (${d.wait} ${LANG=='en'?'min':'dk'})`;throw e}
+  if(d===null)throw fe(WRONG);return d}
+const ic=n=>`<svg class="ic"><use href="#i-${n}"/></svg>`;
+const av=(x,c='')=>`<div class="av ${c}">${x.av?`<img src="/avatar/${encodeURIComponent(x.u)}?v=${x.av}" alt="">`:esc(x.u[0].toUpperCase())}</div>`;
+const note=x=>x.note&&Date.now()-x.note.ts<DAY?x.note:null;
+const swap=(hide,show)=>{hide.style.animation='out .4s forwards';setTimeout(()=>{hide.classList.remove('on');hide.style.animation='';show.classList.add('on')},380)};
+const authErr=e=>{if(e&&e.status==401&&S.me)toLogin()};
+function applySettings(){const s=S.me.settings,a=ACC[s.accent]||ACC.ice,r=document.documentElement.style;
+  r.setProperty('--ice',a[0]);r.setProperty('--a1',a[1]);r.setProperty('--a2',a[2]);r.setProperty('--ar',a[3]);
+  $('#snow').style.display=s.snow?'':'none';document.body.classList.toggle('calm',!!s.calm)}
+/* giriş */
+let mode='login';
+const setMode=m=>{mode=m;$('#ti').style.transform=m=='login'?'none':'translateX(100%)';$('#tl').classList.toggle('on',m=='login');$('#tr').classList.toggle('on',m!='login');
+  $('#go').textContent=t(m=='login'?'Giriş yap':'Hesap oluştur');$('#err').textContent='';$('#inv').style.display=(m!='login'&&S.cfg.invite)?'':'none'};
+$('#tl').onclick=()=>setMode('login');$('#tr').onclick=()=>setMode('reg');
+$('#go').onclick=async()=>{const u=$('#u').value.trim().toLowerCase(),p=$('#p').value,e=$('#err');
+  if(!/^[a-z0-9_]{3,16}$/.test(u))return e.textContent=t('Kullanıcı adı: 3–16 harf/rakam/_');
+  if(mode=='reg'&&p.length<6)return e.textContent=t('Şifre en az 6 karakter');if(!p)return e.textContent=t('Şifre gerekli');
+  try{const d=await api('POST',mode=='reg'?'/register':'/login',{u,p,invite:$('#inv').value.trim()});S.me=d.me;await enter()}catch(x){e.textContent=x.friendly?x.message:t('Giriş başarılı ama ekran açılamadı. Sayfayı Ctrl+F5 ile yenile.')}};
+['#u','#p','#inv'].forEach(q=>$(q).addEventListener('keydown',e=>e.key=='Enter'&&$('#go').click()));
+async function enter(instant){applySettings();if(S.me.settings.lang&&S.me.settings.lang!=LANG)setLang(S.me.settings.lang,1);connect();S.cur=null;
+  try{S.users=(await api('GET','/users')).users}catch(e){}
+  renderList();renderMain();if(instant){$('#login').classList.remove('on');$('#app').classList.add('on')}else swap($('#login'),$('#app'))}
+function toLogin(){if(S.es)S.es.close();S.me=null;S.cur=null;const r=document.documentElement.style;['--ice','--a1','--a2','--ar'].forEach(k=>r.removeProperty(k));
+  $('#snow').style.display='';document.body.classList.remove('calm');$('#p').value='';$('#app').classList.remove('chat','inchat');swap($('#app'),$('#login'))}
+$('#nOut').onclick=async()=>{await api('POST','/logout').catch(()=>{});toLogin()};
+async function refresh(){try{const keep=S.users.find(x=>x.temp&&x.u==S.cur);S.users=(await api('GET','/users')).users;if(keep&&!S.users.find(x=>x.u==keep.u))S.users.push(keep);renderList();if(S.cur&&S.cur[0]!='_')hdr()}catch(e){authErr(e)}}
+/* canlı bağlantı */
+function connect(){if(S.es)S.es.close();let first=true;const es=S.es=new EventSource('/api/stream?u='+encodeURIComponent(S.me.u));
+  es.onopen=()=>{if(first){first=false;return}refresh();if(S.cur&&S.cur[0]!='_')loadMsgs(S.cur)};
+  es.onerror=()=>{if(es.readyState==2)chk()};
+  es.onmessage=e=>{const d=JSON.parse(e.data);
+    if(d.type=='msg'){const mine=d.m.f==S.me.u,other=mine?d.to:d.m.f;
+      if(!S.users.find(z=>z.u==other)){refresh();if(!mine)ping(other,d.m.t);return}
+      const watching=S.cur==other&&!document.hidden;addMsg(other,d.m);
+      if(!mine){if(watching)markRead(other);else{S.users.find(z=>z.u==other).unread++;renderList();ping(other,d.m.t)}}}
+    else refresh()}}
+const chk=()=>{if(S.me)api('GET','/me').catch(()=>{})};addEventListener('focus',chk);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.me){chk();if(S.cur&&S.cur[0]!='_')markRead(S.cur)}});
+let ac;function ping(from,t){const s=S.me.settings;
+  if(s.sound){try{ac=ac||new AudioContext();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.setValueAtTime(.12,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.25);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.25)}catch(e){}}
+  if(s.notify&&document.hidden&&window.Notification&&Notification.permission=='granted')new Notification(from,{body:t})}
+/* liste & notlar */
+const pv=t=>t.length>24?t.slice(0,24).trimEnd()+'…':t;
+function renderList(){if(!S.me)return;const mn=note(S.me);
+  const arr=[...S.users].sort((a,b)=>(b.last?.ts||0)-(a.last?.ts||0)||a.u.localeCompare(b.u));
+  $('#nDm').classList.toggle('has',arr.some(x=>x.unread));
+  $('#notes').innerHTML=`<div class="nt"><button class="bub ${mn?'':'add'}" id="myBub">${mn?esc(pv(mn.t)):t('+ Not')}</button><div class="avw" id="myAv">${av(S.me)}</div><small>${t('Notun')}</small></div>`+
+   arr.filter(note).map(x=>`<div class="nt"><button class="bub" data-n="${x.u}">${esc(pv(note(x).t))}</button><div class="avw" data-u="${x.u}">${av(x)}</div><small>${x.u}</small></div>`).join('');
+  $('#myBub').onclick=()=>mn?showNote(S.me.u):openNote();$('#myAv').onclick=openNote;
+  document.querySelectorAll('.bub[data-n]').forEach(b=>b.onclick=()=>showNote(b.dataset.n));
+  document.querySelectorAll('.avw[data-u]').forEach(b=>b.onclick=()=>openChat(b.dataset.u));
+  const qv=$('#q').value.trim();$('.list').classList.toggle('searching',!!qv);
+  $('#rows').innerHTML=qv?sHTML(qv):arr.length?arr.map(x=>`<button class="row ${S.cur==x.u?'on':''}" data-u="${x.u}"><span class="aw">${av(x,'s')}${x.online?'<i class="dot"></i>':''}</span><div style="min-width:0"><b>${x.u}</b><span class="${x.unread?'un':''}">${x.last?(x.last.f==S.me.u?t('Sen: '):'')+esc(x.last.t):esc(x.bio||t('Merhaba de!'))}</span></div>${x.unread?`<em class="bd">${x.unread>99?'99+':x.unread}</em>`:''}</button>`).join(''):`<div class="sub" style="padding:26px">${t('Henüz kimse yok. Yukarıdan hesap arayıp takip et!')}</div>`;
+  document.querySelectorAll('.row').forEach(b=>b.onclick=()=>openChat(b.dataset.u));
+  document.querySelectorAll('.fw').forEach(b=>b.onclick=()=>toggleFollow(b.dataset.f));document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>msgFrom(b.dataset.m))}
+const sHTML=qv=>{const m=t=>`<div class="sub" style="padding:26px">${t}</div>`;if(qv.length<2)return m(t('Aramak için en az 2 harf yaz'));if(S.sq!==qv.toLowerCase())return m(t('Aranıyor…'));
+  return S.sr.length?S.sr.map(x=>`<div class="sres"><span class="aw">${av(x,'s')}</span><div><b>${esc(x.u)}</b><small>${esc(x.bio||'')}</small></div><div class="btns"><button class="ghost fw ${x.following?'on':''}" data-f="${x.u}">${x.following?t('Takiptesin'):t('Takip et')}</button><button class="ghost" data-m="${x.u}">${t('Mesaj')}</button></div></div>`).join(''):m(t('Hesap bulunamadı'))};
+let qt;$('#q').addEventListener('input',()=>{clearTimeout(qt);const v=$('#q').value.trim().toLowerCase();S.sq=null;renderList();if(v.length<2)return;
+  qt=setTimeout(async()=>{try{const d=await api('GET','/search?q='+encodeURIComponent(v));if($('#q').value.trim().toLowerCase()!==v)return;S.sr=d.users;S.sq=v;renderList()}catch(e){authErr(e)}},250)});
+async function toggleFollow(u){const x=S.sr.find(z=>z.u==u),on=!(x&&x.following);try{await api(on?'POST':'DELETE','/follow/'+encodeURIComponent(u));if(x)x.following=on;await refresh()}catch(e){alert(e.message);authErr(e)}}
+function msgFrom(u){const x=S.sr.find(z=>z.u==u);if(!x)return;if(!S.users.find(z=>z.u==u))S.users.push({u:x.u,bio:x.bio,av:x.av,note:null,online:false,following:x.following,unread:0,last:null,temp:1});$('#q').value='';openChat(u)}
+function openNote(){$('#nt').value=note(S.me)?.t||'';$('#cnt').textContent=$('#nt').value.length+'/60';$('#nm').classList.add('on');setTimeout(()=>$('#nt').focus(),50)}
+$('#nt').oninput=e=>$('#cnt').textContent=e.target.value.length+'/60';
+$('#nX').onclick=()=>$('#nm').classList.remove('on');
+$('#nOk').onclick=async()=>{const t=$('#nt').value.trim();try{if(t)S.me.note=(await api('PUT','/note',{t})).note}catch(e){alert(e.message)}$('#nm').classList.remove('on');renderList()};
+$('#nDel').onclick=async()=>{try{await api('DELETE','/note');S.me.note=null}catch(e){}$('#nm').classList.remove('on');renderList()};
+function showNote(u){const own=u==S.me.u,x=own?S.me:S.users.find(z=>z.u==u);if(!x)return;const n=note(x);if(!n)return;
+  $('#vav').innerHTML=av(x);$('#vn').textContent=own?t('Notun'):u;$('#vt').textContent=n.t;
+  {const hr=Math.max(1,Math.ceil((DAY-(Date.now()-n.ts))/36e5));$('#vts').textContent=LANG=='en'?hr+'h left':hr+' saat daha görünür'}
+  $('#vb').innerHTML=`<button class="ghost" id="vx">${t('Kapat')}</button><button class="btn" id="vgo">${own?t('Düzenle'):t('Mesaj gönder')}</button>`;
+  $('#vx').onclick=closeV;$('#vgo').onclick=()=>{closeV();own?openNote():openChat(u)};$('#vm').classList.add('on')}
+const closeV=()=>$('#vm').classList.remove('on');
+$('#vm').onclick=e=>{if(e.target.id=='vm')closeV()};
+/* sohbet */
+const setNav=v=>{$('#nDm').classList.toggle('on',v=='dm');$('#nPr').classList.toggle('on',v=='pr');$('#nSet').classList.toggle('on',v=='st')};
+async function openChat(u){pushV();S.cur=u;S.ids=new Set();$('#app').classList.add('chat');setNav('dm');renderList();renderMain();loadMsgs(u)}
+async function loadMsgs(u){try{const d=await api('GET','/messages/'+encodeURIComponent(u));if(S.cur!=u||!$('#ms'))return;
+  S.ids=new Set(d.msgs.map(m=>m.id));$('#ms').innerHTML=d.msgs.map(bub).join('');toBottom(false);markRead(u)}catch(e){authErr(e)}}
+function markRead(u){const x=S.users.find(z=>z.u==u);if(x&&x.unread){x.unread=0;renderList()}api('POST','/read/'+encodeURIComponent(u)).catch(()=>{})}
+const bub=m=>`<div class="m ${m.f==S.me.u?'me':'th'}">${esc(m.t)}<small>${new Date(m.ts).toLocaleTimeString(LANG,{hour:'2-digit',minute:'2-digit'})}</small></div>`;
+const toBottom=sm=>{const m=$('#ms');if(m)m.scrollTo({top:m.scrollHeight,behavior:sm?'smooth':'auto'})};
+function addMsg(other,m){const x=S.users.find(z=>z.u==other);if(x)x.last={t:m.t,ts:m.ts,f:m.f};
+  if(S.cur==other&&!S.ids.has(m.id)&&$('#ms')){S.ids.add(m.id);$('#ms').insertAdjacentHTML('beforeend',bub(m));toBottom(true)}renderList()}
+function hdr(){const x=S.users.find(z=>z.u==S.cur);if(!x||!$('#hi'))return;$('#hav').innerHTML=av(x,'s');$('#hi').innerHTML=`<b>${x.u}</b><small>${x.online?t('Çevrimiçi'):esc(x.bio||'')}</small>`}
+function renderMain(){const c=S.cur;$('#app').classList.toggle('inchat',!!c&&c[0]!='_');
+  if(c==='__profile')return renderProfile();if(c==='__settings')return renderSettings();
+  if(!c)return $('#main').innerHTML=`<div class="empty"><div class="big"><svg class="ic" style="width:84px;height:84px;stroke-width:1.2"><use href="#i-snow"/></svg></div><h2>${t('Bir sohbet seç')}</h2><p>${t('Ya da birinin notuna dokun')}</p></div>`;
+  $('#main').innerHTML=`<div class="hd"><button class="ghost" id="back" style="display:none">${ic('back')}</button><span id="hav"></span><div id="hi"></div></div><div class="msgs" id="ms"></div>
+  <div class="send"><input id="mi" placeholder="${t('Mesaj yaz…')}" autocomplete="off" maxlength="2000"><button class="btn" id="sb">${ic('send')}</button></div>`;
+  hdr();if(isMob()){$('#back').style.display='grid';$('#back').onclick=()=>history.state&&history.state.v?history.back():goList()}
+  $('#sb').onclick=send;$('#sb').addEventListener('pointerdown',e=>e.preventDefault());$('#mi').addEventListener('keydown',e=>e.key=='Enter'&&send());if(!isMob())$('#mi').focus()}
+async function send(){const i=$('#mi'),t=i.value.trim();if(!t)return;const to=S.cur;i.value='';
+  try{const d=await api('POST','/messages/'+encodeURIComponent(to),{t});addMsg(to,d.m)}catch(e){i.value=t;alert(e.message);authErr(e)}}
+const goList=()=>{S.cur=null;$('#app').classList.remove('chat');setNav('dm');renderList();renderMain()};
+const pushV=()=>{if(isMob()&&!(history.state&&history.state.v))history.pushState({v:1},'')};
+addEventListener('popstate',()=>{if(S.me)goList()});
+$('#nDm').onclick=()=>{if(isMob()&&history.state&&history.state.v)history.back();else goList()};
+$('#nPr').onclick=()=>{pushV();S.cur='__profile';$('#app').classList.add('chat');setNav('pr');renderList();renderMain()};
+$('#nSet').onclick=()=>{pushV();S.cur='__settings';$('#app').classList.add('chat');setNav('st');renderList();renderMain()};
+/* profil */
+function renderProfile(){const u=S.me;
+  $('#main').innerHTML=`<div class="prof"><div class="av big-av" id="bigav">${u.av?`<img src="/avatar/${encodeURIComponent(u.u)}?v=${u.av}" alt="">`:esc(u.u[0].toUpperCase())}<div class="ov">${ic('cam')}${t('Değiştir')}</div></div>
+  <h2>@${u.u}</h2><label>${t('Biyografi')}</label><textarea id="bio" rows="4" maxlength="150" placeholder="${t('Kendinden bahset…')}">${esc(u.bio||'')}</textarea>
+  <div class="cnt" id="bc">${(u.bio||'').length}/150</div><button class="btn" id="sv">${t('Kaydet')}</button><button class="ghost" id="rm">${t('Fotoğrafı kaldır')}</button></div>`;
+  $('#bigav').onclick=()=>$('#file').click();$('#bio').oninput=e=>$('#bc').textContent=e.target.value.length+'/150';
+  $('#rm').onclick=()=>saveProfile({avatar:''});
+  $('#sv').onclick=async()=>{await saveProfile({bio:$('#bio').value.trim()});const b=$('#sv');if(b){b.textContent=t('Kaydedildi');setTimeout(()=>{if($('#sv'))$('#sv').textContent=t('Kaydet')},1400)}}}
+async function saveProfile(p){try{S.me=(await api('PUT','/profile',p)).me;applySettings();if(S.cur=='__profile')renderProfile();renderList()}catch(e){alert(e.message);authErr(e)}}
+$('#file').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+  r.onload=()=>{const im=new Image();im.onload=()=>{const c=document.createElement('canvas'),s=256,m=Math.min(im.width,im.height);c.width=c.height=s;
+    c.getContext('2d').drawImage(im,(im.width-m)/2,(im.height-m)/2,m,m,0,0,s,s);saveProfile({avatar:c.toDataURL('image/jpeg',.85)})};im.src=r.result};
+  r.readAsDataURL(f);e.target.value=''};
+/* ayarlar */
+const sw=(k,a,d)=>`<div class="sr"><div>${t(a)}<small>${t(d)}</small></div><button class="sw ${S.me.settings[k]?'on':''}" data-k="${k}" role="switch"></button></div>`;
+function renderSettings(){const s=S.me.settings;
+  $('#main').innerHTML=`<div class="set"><h2>${t('Ayarlar')}</h2>
+  <div class="sc glass"><b>${t('Görünüm')}</b>
+  <div class="sr"><div>${t('Dil')}<small>${t('Arayüz dili')}</small></div><div class="lg2"><button data-l="tr" class="${LANG=='tr'?'on':''}">Türkçe</button><button data-l="en" class="${LANG=='en'?'on':''}">English</button></div></div>
+  <div class="sr"><div>${t('Vurgu rengi')}<small>${t('Butonlar ve ışıltılar')}</small></div><div class="sws">${Object.keys(ACC).map(k=>`<button class="swt ${s.accent==k?'on':''}" data-a="${k}" title="${t(ACN[k])}" style="background:linear-gradient(135deg,${ACC[k][1]},${ACC[k][2]});color:${ACC[k][0]}"></button>`).join('')}</div></div>
+  ${sw('snow','Kar yağışı','Arka plandaki kar taneleri')}${sw('calm','Animasyonları azalt','Daha sakin ve hafif arayüz')}</div>
+  <div class="sc glass"><b>${t('Bildirimler')}</b>${sw('sound','Mesaj sesi','Yeni mesajda kısa bir ses çal')}${sw('notify','Masaüstü bildirimi','Sekme arka plandayken haber ver')}</div>
+  <div class="sc glass"><b>${t('Gizlilik')}</b>${sw('showOnline','Çevrimiçi durumu','Arkadaşların seni çevrimiçi görsün')}</div>
+  <div class="sc glass"><b>${t('Güvenlik')}</b><input id="po" type="password" placeholder="${t('Mevcut şifre')}" autocomplete="current-password"><input id="pn" type="password" placeholder="${t('Yeni şifre (en az 6)')}" autocomplete="new-password"><div class="err" id="pe"></div>
+   <button class="btn" id="pc">${t('Şifreyi değiştir')}</button><button class="ghost" id="lo">${t('Tüm cihazlardan çıkış yap')}</button></div>
+  <div class="sc glass dang"><b>${t('Hesabı sil')}</b><div class="sub" style="text-align:left;margin:0">${t('Mesajların ve profilin kalıcı olarak silinir.')}</div><input id="pd" type="password" placeholder="${t('Şifreni onayla')}"><div class="err" id="de"></div><button class="btn red" id="dl">${t('Hesabımı sil')}</button></div></div>`;
+  document.querySelectorAll('.lg2 button').forEach(b=>b.onclick=()=>setLang(b.dataset.l));
+  document.querySelectorAll('.sw').forEach(b=>b.onclick=async()=>{const k=b.dataset.k,v=!S.me.settings[k];
+    if(k=='notify'&&v&&window.Notification&&Notification.permission!='granted'&&await Notification.requestPermission()!='granted')return alert(t('Tarayıcı bildirim iznini vermedi'));
+    setSet({[k]:v})});
+  document.querySelectorAll('.swt').forEach(b=>b.onclick=()=>setSet({accent:b.dataset.a}));
+  $('#pc').onclick=async()=>{const e=$('#pe');e.style.color='';try{await api('POST','/password',{old:$('#po').value,new:$('#pn').value});$('#po').value=$('#pn').value='';e.style.color='var(--ice)';e.textContent=t('Şifre güncellendi')}catch(x){e.textContent=x.message}};
+  $('#lo').onclick=async()=>{await api('POST','/logout-all').catch(()=>{});toLogin()};
+  $('#dl').onclick=async()=>{if(!confirm(t('Hesabın kalıcı olarak silinecek. Emin misin?')))return;try{await api('POST','/delete',{p:$('#pd').value});toLogin()}catch(x){$('#de').textContent=x.message}}}
+/* dil */
+function trDom(){const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;
+  while(n=w.nextNode()){if(n.parentElement.closest('#main,#rows,#notes,#vm,#err,script,style'))continue;
+    const o=n.__o??(n.__o=n.nodeValue.trim());if(!o||!EN[o])continue;n.nodeValue=n.nodeValue.replace(/\S[\s\S]*\S|\S/,()=>LANG=='en'?EN[o]:o)}
+  document.querySelectorAll('[placeholder],[data-t]').forEach(el=>{if(el.closest('#main'))return;for(const a of['placeholder','data-t']){if(!el.hasAttribute(a))continue;const k='_o'+a,o=el[k]??(el[k]=el.getAttribute(a));if(EN[o])el.setAttribute(a,LANG=='en'?EN[o]:o)}})}
+function setLang(l,quiet){LANG=l;try{localStorage.setItem('fl_lang',l)}catch(e){}document.documentElement.lang=l;trDom();$('#lgb').innerHTML=`<b style="opacity:${l=='tr'?1:.4}">TR</b> | <b style="opacity:${l=='en'?1:.4}">EN</b>`;setMode(mode);$('#err').textContent='';
+  if(S.me){S.me.settings.lang=l;if(!quiet)api('PUT','/settings',{lang:l}).catch(()=>{});renderList();renderMain()}}
+$('#lgb').onclick=()=>setLang(LANG=='tr'?'en':'tr');
+async function setSet(patch){Object.assign(S.me.settings,patch);applySettings();
+  document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('on',!!S.me.settings[b.dataset.k]));
+  document.querySelectorAll('.swt').forEach(b=>b.classList.toggle('on',b.dataset.a==S.me.settings.accent));
+  try{await api('PUT','/settings',patch)}catch(e){authErr(e)}}
+/* kar */
+const cv=$('#snow'),cx=cv.getContext('2d');let W,H;const fl=Array.from({length:70},()=>({x:Math.random(),y:Math.random(),r:Math.random()*2+.6,v:Math.random()*.4+.15,d:Math.random()*6}));
+const rs=()=>{W=cv.width=innerWidth;H=cv.height=innerHeight};rs();addEventListener('resize',rs);
+(function t(){requestAnimationFrame(t);if(S.me&&!S.me.settings.snow)return;cx.clearRect(0,0,W,H);cx.fillStyle='rgba(200,240,255,.7)';
+  for(const f of fl){f.y+=f.v/300;f.d+=.01;if(f.y>1)f.y=0;cx.beginPath();cx.arc((f.x+Math.sin(f.d)*.02)*W,f.y*H,f.r,0,7);cx.fill()}})();
+/* başlangıç */
+history.replaceState(null,'');setMob();setLang(LANG,1);
+(async()=>{try{S.cfg=await api('GET','/config')}catch(e){$('#login').classList.add('on');$('#err').textContent=e.message;return}
+  try{S.me=(await api('GET','/me')).me;await enter(true)}catch(e){$('#login').classList.add('on');if(e.status!=401)$('#err').textContent=e.friendly?e.message:t('Sayfa yüklenirken sorun çıktı, Ctrl+F5 ile yenile.')}})();
+</script></body></html>
