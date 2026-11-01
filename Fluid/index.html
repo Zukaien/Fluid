@@ -171,7 +171,7 @@ async function api(m,p,b){let r;
   try{r=await fetch('/api'+p,{method:m,headers:{...(b?{'Content-Type':'application/json'}:{}),...(S.me?{'X-Fluid-User':S.me.u}:{})},body:b?JSON.stringify(b):undefined,credentials:'same-origin'})}catch(x){throw fe(NOSRV)}
   let d=null;try{d=await r.json()}catch(x){}
   if(r.status==409&&S.me){alert(t('Bu tarayıcıda başka bir hesaba giriş yapıldı. Sayfa yenileniyor.'));location.reload();throw fe('')}
-  if(!r.ok)throw fe(d&&d.error?d.error:byStatus(r.status),r.status);
+  if(!r.ok){const e=fe(d&&d.error?d.error:byStatus(r.status),r.status);if(d&&d.wait)e.message+=` (${d.wait} ${LANG=='en'?'min':'dk'})`;throw e}
   if(d===null)throw fe(WRONG);return d}
 const ic=n=>`<svg class="ic"><use href="#i-${n}"/></svg>`;
 const av=(x,c='')=>`<div class="av ${c}">${x.av?`<img src="/avatar/${encodeURIComponent(x.u)}?v=${x.av}" alt="">`:esc(x.u[0].toUpperCase())}</div>`;
