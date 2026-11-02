@@ -334,7 +334,7 @@ $('#go').onclick=async()=>{const u=$('#u').value.trim().toLowerCase(),p=$('#p').
 ['#u','#p','#inv'].forEach(q=>$(q).addEventListener('keydown',e=>e.key=='Enter'&&$('#go').click()));
 async function enter(instant){applySettings();if(S.me.settings.lang&&S.me.settings.lang!=LANG)setLang(S.me.settings.lang,1);connect();S.cur=null;
   try{const d=await api('GET','/users');S.users=d.users;S.groups=d.groups||[]}catch(e){}
-  renderList();renderMain();if(instant){$('#login').classList.remove('on');$('#app').classList.add('on')}else swap($('#login'),$('#app'))}
+  renderList();renderMain();if(instant){$('#login').classList.remove('on');$('#app').classList.add('on')}else swap($('#login'),$('#app))}
 function toLogin(){if(S.es)S.es.close();S.me=null;S.cur=null;const r=document.documentElement.style;['--ice','--a1','--a2','--ar'].forEach(k=>r.removeProperty(k));
   $('#snow').style.display='';document.body.classList.remove('calm');aeroSync();$('#p').value='';$('#app').classList.remove('chat','inchat');swap($('#app'),$('#login'))}
 $('#nOut').onclick=async()=>{await api('POST','/logout').catch(()=>{});toLogin()};
@@ -344,10 +344,6 @@ function connect(){if(S.es)S.es.close();let first=true;const es=S.es=new EventSo
   es.onopen=()=>{if(first){first=false;return}refresh();if(S.cur&&S.cur[0]!='_')loadMsgs(S.cur)};
   es.onerror=()=>{if(es.readyState==2)chk()};
   es.onmessage=e=>{const d=JSON.parse(e.data);
-    
-    // ---- EKLEME: Call Event Kontrolü ----
-    if(d.type&&d.type.startsWith('call-')){if(window.FCall)FCall.ev(d);return}
-
     if(d.type=='edit'||d.type=='del'){const mn=d.m.f==S.me.u;applyUpdate(d.g||(mn?d.to:d.m.f),d.m);return}
     if(d.type=='msg'){const mine=d.m.f==S.me.u,other=d.g||(mine?d.to:d.m.f),x=convOf(other);
       if(!x){refresh();if(!mine)ping(other,d.m.t||(d.m.i?'📷':'GIF'));return}
@@ -496,7 +492,7 @@ function markRead(u){const x=convOf(u);if(x&&x.unread){x.unread=0;renderList()}a
 const bub=m=>{const mine=m.f==S.me.u,nm=isG(S.cur)&&!mine?`<div class="sn" data-u="${esc(m.f)}" style="cursor:pointer">${esc(m.f)}</div>`:'';
   if(m.d)return `<div class="m ${mine?'me':'th'} dl" data-id="${m.id}">${nm}<div class="mt del">${t('Bu mesaj silindi')}</div></div>`;
   const rp=m.r?`<div class="rp" data-r="${m.r.id}"><b>${esc(m.r.f==S.me.u?t('Sen'):m.r.f)}</b><span>${m.r.d?t('Silinen mesaj'):esc(m.r.t)}</span></div>`:'';
-  const bd=m.g?`<img class="gif" src="${esc(m.g.u)}" width="${m.g.w}" height="${m.g.h}" alt="GIF" loading="lazy">`:m.i?`<img class="gif pic" src="/img/${m.i}" width="${m.iw}" height="${m.ih}" alt="" loading="lazy">${m.t?`<div class="mt" style="padding:6px 6px 0">${esc(m.t)}</div>`:''}`:`<div class="mt">${esc(m.t)}</div>`;
+  const bd=m.g?`<img class="gif" src="${esc(m.g.u)}" width="${m.g.w}" height="${m.g.h}" alt="GIF" loading="lazy">`:m.i?`<img class="gif pic" src="/img/${m.i}" width="${m.iw}" height="${m.ih}" alt="" loading="lazy">${m.t?`<div class="mt" style="padding:6px 6px 0">${esc(m.t)}</div>`:{}}`:`<div class="mt">${esc(m.t)}</div>`;
   return `<div class="m ${mine?'me':'th'}${m.g||m.i?' gm':''}" data-id="${m.id}">${nm}${rp}${bd}<small>${new Date(m.ts).toLocaleTimeString(LANG,{hour:'2-digit',minute:'2-digit'})}${m.e?' · '+t('düzenlendi'):''}</small><button class="rb" title="${t('Seçenekler')}">${ic('dots')}</button></div>`};
 const toBottom=sm=>{const m=$('#ms');if(m)m.scrollTo({top:m.scrollHeight,behavior:sm?'smooth':'auto'})};
 function addMsg(other,m){const x=convOf(other);if(x)x.last={t:m.t,ts:m.ts,f:m.f,g:!!m.g,i:!!m.i,d:!!m.d};
@@ -504,10 +500,6 @@ function addMsg(other,m){const x=convOf(other);if(x)x.last={t:m.t,ts:m.ts,f:m.f,
 function hdr(){
   if(!$('#hi'))return;
   renderAbar();
-  
-  // ---- EKLEME: Üst bara arama butonunu ekle ----
-  if(window.FCall) FCall.hdrBtn();
-
   if(isG(S.cur)){const g=G(S.cur);if(!g)return;$('#hav').innerHTML=gav(g,'s');$('#hi').innerHTML=`<b>${esc(g.name)}</b><small>${esc(g.members.map(m=>m.u).join(', '))}</small>`;return}
   const x=S.users.find(z=>z.u==S.cur);if(!x)return;$('#hav').innerHTML=av(x,'s');$('#hi').innerHTML=`<b>${x.u}</b><small>${x.online?t('Çevrimiçi'):esc(x.bio||'')}</small>`}
 function renderMain(){const c=S.cur;$('#app').classList.toggle('inchat',!!c&&c[0]!='_');
@@ -571,7 +563,7 @@ function renderSettings(){const s=S.me.settings;
   document.querySelectorAll('.swt').forEach(b=>b.onclick=()=>setSet({accent:b.dataset.a}));
   $('#pc').onclick=async()=>{const e=$('#pe');e.style.color='';try{await api('POST','/password',{old:$('#po').value,new:$('#pn').value});$('#po').value=$('#pn').value='';e.style.color='var(--ice)';e.textContent=t('Şifre güncellendi')}catch(x){e.textContent=x.message}};
   $('#lo').onclick=async()=>{await api('POST','/logout-all').catch(()=>{});toLogin()};
-  $('#dl').onclick=async()=>{if(!confirm(t('Hesabın kalıcı olarak silinecek. Emin misin?')))return;try{await api('POST','/delete',{p:$('#pd').value});toLogin()}catch(x){$('#de'].textContent=x.message}}}
+  $('#dl').onclick=async()=>{if(!confirm(t('Hesabın kalıcı olarak silinecek. Emin misin?')))return;try{await api('POST','/delete',{p:$('#pd').value});toLogin()}catch(x){$('#de').textContent=x.message}}}
 /* dil */
 function trDom(){const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let n;
   while(n=w.nextNode()){if(n.parentElement.closest('#main,#rows,#notes,#vm,#err,script,style'))continue;
@@ -616,7 +608,7 @@ function bar(){if(!AERO.synth)return;const c=AERO.c,t0=c.currentTime+.1,ch=CH[AE
 async function musicStart(){
   if(AERO.busy||AERO.synth||(AERO.el&&!AERO.el.paused))return;AERO.busy=1;
   try{
-    if(AERO.file===undefined){try{AERO.file=(await fetch('/media/frutiger.mp3',{method:‘HEAD’})).ok}catch(e){AERO.file=false}}
+    if(AERO.file===undefined){try{AERO.file=(await fetch('/media/frutiger.mp3',{method:'HEAD'})).ok}catch(e){AERO.file=false}}
     const s=S.me&&S.me.settings;if(!s||!s.frutiger||!s.fmusic)return;
     if(AERO.file){if(!AERO.el){AERO.el=new Audio('/media/frutiger.mp3');AERO.el.loop=true;AERO.el.volume=.5}await AERO.el.play().catch(()=>{});return}
     const c=actx();await c.resume().catch(()=>{});if(c.state!='running'||AERO.synth)return;
@@ -640,6 +632,4 @@ history.replaceState(null,'');setMob();setLang(LANG,1);
 (async()=>{try{S.cfg=await api('GET','/config')}catch(e){$('#login').classList.add('on');$('#err').textContent=e.message;return}
   try{S.me=(await api('GET','/me')).me;await enter(true)}catch(e){$('#login').classList.add('on');if(e.status!=401)$('#err').textContent=e.friendly?e.message:t('Sayfa yüklenirken sorun çıktı, Ctrl+F5 ile yenile.')}})();
 </script>
-
-
 </body></html>
