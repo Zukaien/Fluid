@@ -7,10 +7,10 @@ const DATA = process.env.DATA_DIR || path.join(__dirname, 'data'), FILE = path.j
 const INVITE = process.env.INVITE_CODE || '', TRUST = process.env.TRUST_PROXY === '1' || !!process.env.RENDER;
 const DAY = 864e5, SESS = 30 * DAY, NAME = /^[a-z0-9_]{3,16}$/;
 const ACCENTS = ['ice', 'violet', 'mint', 'rose'];
-const DEF = { accent: 'ice', snow: true, calm: false, sound: true, notify: false, showOnline: true };
+const DEF = { accent: 'ice', snow: true, calm: false, sound: true, notify: false, showOnline: true, frutiger: false, fmusic: false };
 const GIPHY_KEY = process.env.GIPHY_API_KEY || '', GIPHY_BASE = process.env.GIPHY_BASE || 'https://api.giphy.com/v1/gifs/';
 const GIF_RE = /^https:\/\/(media\d*|i)\.giphy\.com\//, clampN = v => Math.max(50, Math.min(600, Math.round(+v) || 200));
-const CSP = "default-src 'self'; img-src 'self' data: https://*.giphy.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
+const CSP = "default-src 'self'; img-src 'self' data: https://*.giphy.com; media-src 'self'; frame-src https://www.youtube.com https://www.youtube-nocookie.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
 
 fs.mkdirSync(DATA, { recursive: true });
 let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, arch: {}, imgs: {}, seq: 0 };
@@ -156,6 +156,23 @@ async function reset() {
   console.log(`✔ ${u} için şifre güncellendi.`); process.exit(0);
 }
 
+// ---- Frutiger Aero arka plan videosu ve müziği (isteğe bağlı): media/frutiger.mp4, media/frutiger.mp3 ----
+const MEDIA = path.join(__dirname, 'media'), MT = { mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg' };
+function media(req, res, name) {
+  let st; try { st = fs.statSync(path.join(MEDIA, name)); } catch (e) { res.writeHead(404); return res.end(); }
+  const h = { 'Content-Type': MT[name.split('.').pop()], 'Accept-Ranges': 'bytes', 'Cache-Control': 'public, max-age=86400' };
+  const r = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+  let s = 0, e = st.size - 1, code = 200;
+  if (r && (r[1] || r[2])) {
+    if (r[1]) { s = +r[1]; if (r[2]) e = Math.min(+r[2], e); } else s = Math.max(0, st.size - +r[2]);
+    if (s > e || s >= st.size) { res.writeHead(416, { 'Content-Range': 'bytes */' + st.size }); return res.end(); }
+    code = 206; h['Content-Range'] = `bytes ${s}-${e}/${st.size}`;
+  }
+  h['Content-Length'] = e - s + 1; res.writeHead(code, h);
+  if (req.method === 'HEAD') return res.end();
+  fs.createReadStream(path.join(MEDIA, name), { start: s, end: e }).pipe(res);
+}
+
 const gifCache = new Map();
 async function gifs(q) {
   const ck = q.toLowerCase(), c = gifCache.get(ck); if (c && Date.now() - c.t < 6e5) return c.d;
@@ -168,10 +185,12 @@ async function gifs(q) {
 }
 
 const server = http.createServer(async (req, res) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'same-origin'); res.setHeader('X-Frame-Options', 'DENY');
+  // YouTube gömmesi için kaynak adresi (origin) gönderilmeli
+  res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin'); res.setHeader('X-Frame-Options', 'DENY');
   const url = new URL(req.url, 'http://x'), p = url.pathname, M = req.method;
   try {
     if (M === 'GET' && p === '/') { res.setHeader('Content-Security-Policy', CSP); res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' }); return res.end(fs.readFileSync(path.join(__dirname, 'index.html'))); }
+    { const mm = /^\/media\/(frutiger\.(?:mp4|webm|mp3))$/.exec(p); if ((M === 'GET' || M === 'HEAD') && mm) return media(req, res, mm[1]); }
     if (!p.startsWith('/api/') && !p.startsWith('/avatar/') && !p.startsWith('/img/')) { res.writeHead(404); return res.end(); }
     if (M !== 'GET' && req.headers.origin) { let ok = false; try { const h = new URL(req.headers.origin).host; ok = h === req.headers.host || h === req.headers['x-forwarded-host']; } catch (e) {} if (!ok) return J(res, 403, { error: 'Geçersiz istek' }); }
     const ip = TRUST ? ((req.headers['x-forwarded-for'] || '').split(',')[0].trim() || req.socket.remoteAddress) : req.socket.remoteAddress;
@@ -334,7 +353,7 @@ const server = http.createServer(async (req, res) => {
       const b = await body(req), s = U.settings = { ...DEF, ...U.settings };
       if (ACCENTS.includes(b.accent)) s.accent = b.accent;
       if (['tr', 'en'].includes(b.lang)) s.lang = b.lang;
-      for (const k of ['snow', 'calm', 'sound', 'notify', 'showOnline']) if (typeof b[k] === 'boolean') s[k] = b[k];
+      for (const k of ['snow', 'calm', 'sound', 'notify', 'showOnline', 'frutiger', 'fmusic']) if (typeof b[k] === 'boolean') s[k] = b[k];
       save(); if ('showOnline' in b) broadcast({ type: 'presence' }); return J(res, 200, { settings: s });
     }
     if (M === 'POST' && p === '/api/password') {
