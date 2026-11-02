@@ -116,7 +116,7 @@ input:focus,textarea:focus{border-color:var(--ice);box-shadow:0 0 0 4px rgba(var
 .lg2 button:hover{transform:scale(1.05);background:rgba(var(--ar),.12)}.lg2 button.on{background:linear-gradient(135deg,var(--a1),var(--a2));color:#04122a;font-weight:700;border-color:transparent}
 #login .card{position:relative}
 .nv.has::before{content:"";position:absolute;top:9px;right:calc(50% - 20px);width:9px;height:9px;border-radius:50%;background:var(--ice);box-shadow:0 0 8px var(--ice)}
-/* ---- telefon düzeni ---- */
+/* ---- telefon düzeni (Instagram benzeri dikey akış) ---- */
 html.mobile,.mobile body{overscroll-behavior:none}
 .mobile *{-webkit-tap-highlight-color:transparent}.mobile button{touch-action:manipulation}
 .mobile .screen{bottom:auto;height:var(--vh,100dvh)}
@@ -189,6 +189,7 @@ html.mobile,.mobile body{overscroll-behavior:none}
 .pgnote{padding:14px 24px 0}.pgnote span{display:inline-block;background:rgba(220,245,255,.96);color:#06203d;padding:7px 13px;border-radius:18px;font-size:13px}
 .pgbtns{display:flex;gap:10px;padding:18px 24px 0}.pgbtns>*{flex:1}.pgj{padding:16px 24px 0;color:var(--mut);font-size:13px}
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:9px}
+/* fotoğraf & yeni profil */
 .gifbtn .ic{width:20px;height:20px;display:block}#pbtn{padding:0 11px}
 .pic{cursor:zoom-in}
 #iv{place-items:center!important;cursor:zoom-out}#ivi{max-width:94vw;max-height:90vh;border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
@@ -205,7 +206,7 @@ html.mobile,.mobile body{overscroll-behavior:none}
 .mobile .pgtop{gap:18px;padding-left:18px;padding-right:18px}
 .notes::-webkit-scrollbar{height:8px}.notes::-webkit-scrollbar-thumb{background:rgba(var(--ar),.4);border-radius:9px}.notes::-webkit-scrollbar-thumb:hover{background:rgba(var(--ar),.65)}
 .mobile .notes{scrollbar-width:none}.mobile .notes::-webkit-scrollbar{display:none}
-/* Frutiger Aero */
+/* ---- Frutiger Aero ---- */
 #fv{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;display:none;pointer-events:none}
 body.fa #fv{display:block}body.fa.novid #fv{display:none}
 #fish{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;display:none}body.fa.novid #fish{display:block}
@@ -226,7 +227,7 @@ body.fa .btn:hover{background-position:0 0;box-shadow:0 8px 24px rgba(0,120,200,
 body.fa .ghost{border-color:rgba(255,255,255,.6);background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.06))}
 body.fa input,body.fa textarea{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.55)}
 body.fa ::placeholder{color:#e2f7ff;opacity:.85}
-body.fa .m.me{background:linear-gradient(180deg,rgba(255,255,255,.6),transparent 55%),linear-gradient(135deg,var(--a1),var(--a2)),color:#033a5c;box-shadow:0 3px 10px rgba(0,80,140,.3),inset 0 1px 0 #fff}
+body.fa .m.me{background:linear-gradient(180deg,rgba(255,255,255,.6),transparent 55%),linear-gradient(135deg,var(--a1),var(--a2));color:#033a5c;box-shadow:0 3px 10px rgba(0,80,140,.3),inset 0 1px 0 #fff}
 body.fa .m.th{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.14));border-color:rgba(255,255,255,.55)}
 body.fa .dot{border-color:#1b86d6}
 body.fa .lgi{animation:lgf 5s ease-in-out infinite}
@@ -311,7 +312,7 @@ const fe=(msg,st)=>{const e=new Error(t(msg));e.friendly=1;e.status=st;return e}
 async function api(m,p,b){let r;
   try{r=await fetch('/api'+p,{method:m,headers:{...(b?{'Content-Type':'application/json'}:{}),...(S.me?{'X-Fluid-User':S.me.u}:{})},body:b?JSON.stringify(b):undefined,credentials:'same-origin'})}catch(x){throw fe(NOSRV)}
   let d=null;try{d=await r.json()}catch(x){}
-  if(r.status==409&&S.me){alert(t('Bu tarayıcıda başka bir hesaba giriş yapıldı. Sayfayı yenileniyor.'));location.reload();throw fe('')}
+  if(r.status==409&&S.me){alert(t('Bu tarayıcıda başka bir hesaba giriş yapıldı. Sayfa yenileniyor.'));location.reload();throw fe('')}
   if(!r.ok){const e=fe(d&&d.error?d.error:byStatus(r.status),r.status);if(d&&d.wait)e.message+=` (${d.wait} ${LANG=='en'?'min':'dk'})`;throw e}
   if(d===null)throw fe(WRONG);return d}
 const ic=n=>`<svg class="ic"><use href="#i-${n}"/></svg>`;
@@ -334,7 +335,7 @@ $('#go').onclick=async()=>{const u=$('#u').value.trim().toLowerCase(),p=$('#p').
 ['#u','#p','#inv'].forEach(q=>$(q).addEventListener('keydown',e=>e.key=='Enter'&&$('#go').click()));
 async function enter(instant){applySettings();if(S.me.settings.lang&&S.me.settings.lang!=LANG)setLang(S.me.settings.lang,1);connect();S.cur=null;
   try{const d=await api('GET','/users');S.users=d.users;S.groups=d.groups||[]}catch(e){}
-  renderList();renderMain();if(instant){$('#login').classList.remove('on');$('#app').classList.add('on')}else swap($('#login'),$('#app))}
+  renderList();renderMain();if(instant){$('#login').classList.remove('on');$('#app').classList.add('on')}else swap($('#login'),$('#app'))}
 function toLogin(){if(S.es)S.es.close();S.me=null;S.cur=null;const r=document.documentElement.style;['--ice','--a1','--a2','--ar'].forEach(k=>r.removeProperty(k));
   $('#snow').style.display='';document.body.classList.remove('calm');aeroSync();$('#p').value='';$('#app').classList.remove('chat','inchat');swap($('#app'),$('#login'))}
 $('#nOut').onclick=async()=>{await api('POST','/logout').catch(()=>{});toLogin()};
@@ -497,10 +498,7 @@ const bub=m=>{const mine=m.f==S.me.u,nm=isG(S.cur)&&!mine?`<div class="sn" data-
 const toBottom=sm=>{const m=$('#ms');if(m)m.scrollTo({top:m.scrollHeight,behavior:sm?'smooth':'auto'})};
 function addMsg(other,m){const x=convOf(other);if(x)x.last={t:m.t,ts:m.ts,f:m.f,g:!!m.g,i:!!m.i,d:!!m.d};
   if(S.cur==other&&!S.ids.has(m.id)&&$('#ms')){S.ids.add(m.id);S.mm.set(m.id,m);$('#ms').insertAdjacentHTML('beforeend',bub(m));toBottom(true)}renderList()}
-function hdr(){
-  if(!$('#hi'))return;
-  renderAbar();
-  if(isG(S.cur)){const g=G(S.cur);if(!g)return;$('#hav').innerHTML=gav(g,'s');$('#hi').innerHTML=`<b>${esc(g.name)}</b><small>${esc(g.members.map(m=>m.u).join(', '))}</small>`;return}
+function hdr(){if(!$('#hi'))return;renderAbar();if(isG(S.cur)){const g=G(S.cur);if(!g)return;$('#hav').innerHTML=gav(g,'s');$('#hi').innerHTML=`<b>${esc(g.name)}</b><small>${esc(g.members.map(m=>m.u).join(', '))}</small>`;return}
   const x=S.users.find(z=>z.u==S.cur);if(!x)return;$('#hav').innerHTML=av(x,'s');$('#hi').innerHTML=`<b>${x.u}</b><small>${x.online?t('Çevrimiçi'):esc(x.bio||'')}</small>`}
 function renderMain(){const c=S.cur;$('#app').classList.toggle('inchat',!!c&&c[0]!='_');
   if(c&&c.startsWith('__u:'))return renderUser(c.slice(4));if(c==='__profile')return renderProfile();if(c==='__settings')return renderSettings();
@@ -585,7 +583,7 @@ const rs=()=>{W=cv.width=innerWidth;H=cv.height=innerHeight};rs();addEventListen
     cx.beginPath();cx.arc(x-r*.35,y-r*.35,r*.22,0,7);cx.fillStyle='rgba(255,255,255,.85)';cx.fill()}return}
   cx.fillStyle='rgba(200,240,255,.7)';
   for(const f of fl){f.y+=f.v/300;f.d+=.01;if(f.y>1)f.y=0;cx.beginPath();cx.arc((f.x+Math.sin(f.d)*.02)*W,f.y*H,f.r,0,7);cx.fill()}})();
-/* Frutiger Aero */
+/* ---- Frutiger Aero: tema, müzik, blop ---- */
 const AERO={},AEROC=['#c8fff4','#4fd8ff','#5cf0a0','200,255,244'];
 const actx=()=>AERO.c||(AERO.c=new(window.AudioContext||window.webkitAudioContext)());
 function blop(k=1){try{const c=actx();if(c.state=='suspended')c.resume();const t0=c.currentTime,o=c.createOscillator(),g=c.createGain(),f=(420+Math.random()*220)*k;
@@ -631,5 +629,4 @@ Object.assign(EN,{"Frutiger Aero":"Frutiger Aero","Parlak su altı teması, bal�
 history.replaceState(null,'');setMob();setLang(LANG,1);
 (async()=>{try{S.cfg=await api('GET','/config')}catch(e){$('#login').classList.add('on');$('#err').textContent=e.message;return}
   try{S.me=(await api('GET','/me')).me;await enter(true)}catch(e){$('#login').classList.add('on');if(e.status!=401)$('#err').textContent=e.friendly?e.message:t('Sayfa yüklenirken sorun çıktı, Ctrl+F5 ile yenile.')}})();
-</script>
-</body></html>
+</script></body></html>
