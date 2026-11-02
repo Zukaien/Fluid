@@ -226,7 +226,7 @@ body.fa .btn:hover{background-position:0 0;box-shadow:0 8px 24px rgba(0,120,200,
 body.fa .ghost{border-color:rgba(255,255,255,.6);background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.06))}
 body.fa input,body.fa textarea{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.55)}
 body.fa ::placeholder{color:#e2f7ff;opacity:.85}
-body.fa .m.me{background:linear-gradient(180deg,rgba(255,255,255,.6),transparent 55%),linear-gradient(135deg,var(--a1),var(--a2));color:#033a5c;box-shadow:0 3px 10px rgba(0,80,140,.3),inset 0 1px 0 #fff}
+body.fa .m.me{background:linear-gradient(180deg,rgba(255,255,255,.6),transparent 55%),linear-gradient(135deg,var(--a1),var(--a2)),color:#033a5c;box-shadow:0 3px 10px rgba(0,80,140,.3),inset 0 1px 0 #fff}
 body.fa .m.th{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.14));border-color:rgba(255,255,255,.55)}
 body.fa .dot{border-color:#1b86d6}
 body.fa .lgi{animation:lgf 5s ease-in-out infinite}
@@ -311,7 +311,7 @@ const fe=(msg,st)=>{const e=new Error(t(msg));e.friendly=1;e.status=st;return e}
 async function api(m,p,b){let r;
   try{r=await fetch('/api'+p,{method:m,headers:{...(b?{'Content-Type':'application/json'}:{}),...(S.me?{'X-Fluid-User':S.me.u}:{})},body:b?JSON.stringify(b):undefined,credentials:'same-origin'})}catch(x){throw fe(NOSRV)}
   let d=null;try{d=await r.json()}catch(x){}
-  if(r.status==409&&S.me){alert(t('Bu tarayıcıda başka bir hesaba giriş yapıldı. Sayfa yenileniyor.'));location.reload();throw fe('')}
+  if(r.status==409&&S.me){alert(t('Bu tarayıcıda başka bir hesaba giriş yapıldı. Sayfayı yenileniyor.'));location.reload();throw fe('')}
   if(!r.ok){const e=fe(d&&d.error?d.error:byStatus(r.status),r.status);if(d&&d.wait)e.message+=` (${d.wait} ${LANG=='en'?'min':'dk'})`;throw e}
   if(d===null)throw fe(WRONG);return d}
 const ic=n=>`<svg class="ic"><use href="#i-${n}"/></svg>`;
@@ -492,7 +492,7 @@ function markRead(u){const x=convOf(u);if(x&&x.unread){x.unread=0;renderList()}a
 const bub=m=>{const mine=m.f==S.me.u,nm=isG(S.cur)&&!mine?`<div class="sn" data-u="${esc(m.f)}" style="cursor:pointer">${esc(m.f)}</div>`:'';
   if(m.d)return `<div class="m ${mine?'me':'th'} dl" data-id="${m.id}">${nm}<div class="mt del">${t('Bu mesaj silindi')}</div></div>`;
   const rp=m.r?`<div class="rp" data-r="${m.r.id}"><b>${esc(m.r.f==S.me.u?t('Sen'):m.r.f)}</b><span>${m.r.d?t('Silinen mesaj'):esc(m.r.t)}</span></div>`:'';
-  const bd=m.g?`<img class="gif" src="${esc(m.g.u)}" width="${m.g.w}" height="${m.g.h}" alt="GIF" loading="lazy">`:m.i?`<img class="gif pic" src="/img/${m.i}" width="${m.iw}" height="${m.ih}" alt="" loading="lazy">${m.t?`<div class="mt" style="padding:6px 6px 0">${esc(m.t)}</div>`:{}}`:`<div class="mt">${esc(m.t)}</div>`;
+  const bd=m.g?`<img class="gif" src="${esc(m.g.u)}" width="${m.g.w}" height="${m.g.h}" alt="GIF" loading="lazy">`:m.i?`<img class="gif pic" src="/img/${m.i}" width="${m.iw}" height="${m.ih}" alt="" loading="lazy">${m.t?`<div class="mt" style="padding:6px 6px 0">${esc(m.t)}</div>`:''}`:`<div class="mt">${esc(m.t)}</div>`;
   return `<div class="m ${mine?'me':'th'}${m.g||m.i?' gm':''}" data-id="${m.id}">${nm}${rp}${bd}<small>${new Date(m.ts).toLocaleTimeString(LANG,{hour:'2-digit',minute:'2-digit'})}${m.e?' · '+t('düzenlendi'):''}</small><button class="rb" title="${t('Seçenekler')}">${ic('dots')}</button></div>`};
 const toBottom=sm=>{const m=$('#ms');if(m)m.scrollTo({top:m.scrollHeight,behavior:sm?'smooth':'auto'})};
 function addMsg(other,m){const x=convOf(other);if(x)x.last={t:m.t,ts:m.ts,f:m.f,g:!!m.g,i:!!m.i,d:!!m.d};
