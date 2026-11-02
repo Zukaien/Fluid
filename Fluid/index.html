@@ -641,6 +641,5 @@ history.replaceState(null,'');setMob();setLang(LANG,1);
   try{S.me=(await api('GET','/me')).me;await enter(true)}catch(e){$('#login').classList.add('on');if(e.status!=401)$('#err').textContent=e.friendly?e.message:t('Sayfa yüklenirken sorun çıktı, Ctrl+F5 ile yenile.')}})();
 </script>
 
-<!-- ---- EKLEME: call.js script yüklemesi ---- -->
-<script src="/call.js"></script>
+
 </body></html>
