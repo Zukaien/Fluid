@@ -19,7 +19,6 @@ let timer = null;
 const flushFile = () => { const t = FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(db)); fs.renameSync(t, FILE); };
 
 // ---- isteğe bağlı uzak kayıt: Upstash Redis (ücretsiz plan) ----
-// UPSTASH_REDIS_REST_URL ve UPSTASH_REDIS_REST_TOKEN tanımlıysa veriler orada saklanır (Render gibi dosyaları silen sunucular için).
 const RURL = (process.env.UPSTASH_REDIS_REST_URL || '').replace(/\/$/, ''), RTOK = process.env.UPSTASH_REDIS_REST_TOKEN || '', REMOTE = !!(RURL && RTOK);
 let ready = !REMOTE, remoteState = {};
 async function rpipe(cmds) {
@@ -81,7 +80,7 @@ function auth(req) { const k = sessKey(req), s = k && db.sessions[k]; if (!s) re
 const dropSessions = (u, keep) => { for (const k in db.sessions) if (db.sessions[k].u === u && k !== keep) delete db.sessions[k]; };
 setInterval(() => { for (const k in db.sessions) if (db.sessions[k].exp < Date.now()) delete db.sessions[k]; save(); }, 36e5);
 
-// Deneme sınırı: IP başına geniş, hesap başına dar. Süre dolunca kendiliğinden açılır.
+// Deneme sınırı
 const tries = new Map(), WIN = 6e5;
 const bucket = k => { const now = Date.now(), a = (tries.get(k) || []).filter(t => now - t < WIN); tries.set(k, a); return a; };
 const wait = (...rules) => { let w = 0; for (const [k, max] of rules) { const a = bucket(k); if (a.length >= max) w = Math.max(w, Math.ceil((a[0] + WIN - Date.now()) / 6e4)); } return w; };
@@ -95,7 +94,7 @@ const noteOf = o => (o.note && Date.now() - o.note.ts < DAY ? o.note : null);
 const clients = new Map();
 const isOnline = u => (clients.get(u) || { size: 0 }).size > 0 && db.users[u].settings?.showOnline !== false;
 const meOf = u => { const o = db.users[u]; return { u, bio: o.bio, av: o.av, note: noteOf(o), settings: { ...DEF, ...o.settings } }; };
-// Listede yalnızca takip ettiklerin ve yazıştıkların görünür.
+
 function listFor(me) {
   const r = db.reads[me] || {}, fol = new Set(db.follows[me] || []), out = [];
   for (const x of Object.keys(db.users)) {
@@ -107,7 +106,7 @@ function listFor(me) {
   }
   return out;
 }
-// ---- sınırsız geçmiş: her ARCH_N mesajda eski mesajlar indirilebilir, sonra temizlenir ----
+
 const rmImgs = arr => { for (const x of arr || []) if (x.i) delete db.imgs[x.i]; };
 const ARCH_N = +process.env.ARCHIVE_COUNT || 3000, ARCH_MS = (+process.env.ARCHIVE_DAYS || 3) * DAY;
 const members = ck => ck.startsWith('g:') ? ((db.groups[ck.slice(2)] || {}).members || []) : ck.split('|');
@@ -131,7 +130,6 @@ function sweepArchives() {
 }
 setInterval(sweepArchives, 6e4);
 
-// ---- gruplar ----
 const groupOf = (g, me) => { const k = 'g:' + g.id, m = db.msgs[k] || [], l = m[m.length - 1], last = (db.reads[me] || {})[k] || 0;
   return { id: g.id, name: g.name, owner: g.owner, members: g.members.map(u => ({ u, av: db.users[u] ? db.users[u].av : 0 })),
     unread: m.filter(z => z.f !== me && z.id > last && !z.d).length, last: l ? { t: l.d ? '' : l.t, ts: l.ts, f: l.f, g: !!l.g, i: !!l.i, d: !!l.d } : null, arch: archOf(k, me) }; };
@@ -147,7 +145,6 @@ const body = req => new Promise((ok, no) => { let n = 0; const c = [];
   req.on('end', () => { try { ok(c.length ? JSON.parse(Buffer.concat(c)) : {}); } catch (e) { no(new Error('bad')); } });
 });
 
-// ---- komut satırından şifre sıfırlama ----
 async function reset() {
   const [u, pw] = [String(process.argv[3] || '').toLowerCase(), process.argv[4] || ''];
   if (!db.users[u] || pw.length < 6) { console.log('Kullanım: node server.js reset <kullanici> <en-az-6-karakter>'); process.exit(1); }
@@ -156,7 +153,6 @@ async function reset() {
   console.log(`✔ ${u} için şifre güncellendi.`); process.exit(0);
 }
 
-// ---- Frutiger Aero arka plan videosu ve müziği (isteğe bağlı): media/frutiger.mp4, media/frutiger.mp3 ----
 const MEDIA = path.join(__dirname, 'media'), MT = { mp4: 'video/mp4', webm: 'video/webm', mp3: 'audio/mpeg' };
 function media(req, res, name) {
   let st; try { st = fs.statSync(path.join(MEDIA, name)); } catch (e) { res.writeHead(404); return res.end(); }
@@ -184,12 +180,18 @@ async function gifs(q) {
   if (gifCache.size > 200) gifCache.clear(); gifCache.set(ck, { t: Date.now(), d }); return d;
 }
 
+// ---- EKLEME: CALL SERVER TANIMI (apply-call.js ile eklenen kısım) ----
+const CALL = require('./call-server.js')({ db: () => db, push, members, key });
+
 const server = http.createServer(async (req, res) => {
-  // YouTube gömmesi için kaynak adresi (origin) gönderilmeli
   res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin'); res.setHeader('X-Frame-Options', 'DENY');
   const url = new URL(req.url, 'http://x'), p = url.pathname, M = req.method;
   try {
     if (M === 'GET' && p === '/') { res.setHeader('Content-Security-Policy', CSP); res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' }); return res.end(fs.readFileSync(path.join(__dirname, 'index.html'))); }
+    
+    // ---- EKLEME: call.js sunumu ----
+    if (M === 'GET' && p === '/call.js') { res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }); return res.end(fs.readFileSync(path.join(__dirname, 'call.js'))); }
+
     { const mm = /^\/media\/(frutiger\.(?:mp4|webm|mp3))$/.exec(p); if ((M === 'GET' || M === 'HEAD') && mm) return media(req, res, mm[1]); }
     if (!p.startsWith('/api/') && !p.startsWith('/avatar/') && !p.startsWith('/img/')) { res.writeHead(404); return res.end(); }
     if (M !== 'GET' && req.headers.origin) { let ok = false; try { const h = new URL(req.headers.origin).host; ok = h === req.headers.host || h === req.headers['x-forwarded-host']; } catch (e) {} if (!ok) return J(res, 403, { error: 'Geçersiz istek' }); }
@@ -217,6 +219,9 @@ const server = http.createServer(async (req, res) => {
     const me = auth(req); if (!me) return J(res, 401, { error: 'Oturum gerekli' });
     const hu = req.headers['x-fluid-user']; if (hu && hu !== me) return J(res, 409, { error: 'Hesap değişti' });
     const U = db.users[me];
+
+    // ---- EKLEME: Call API rotaları ----
+    if (M === 'POST' && p.startsWith('/api/call/')) return await CALL.route(req, res, p, me, body, J);
 
     let m;
     if (M === 'GET' && (m = /^\/avatar\/([^/]+)$/.exec(p))) {
@@ -265,7 +270,20 @@ const server = http.createServer(async (req, res) => {
       res.write('retry: 3000\n\n');
       let set = clients.get(me); if (!set) clients.set(me, set = new Set());
       const was = set.size; set.add(res); if (!was) broadcast({ type: 'presence' });
-      req.on('close', () => { set.delete(res); if (!set.size) setTimeout(() => { if (!(clients.get(me) || { size: 0 }).size) broadcast({ type: 'presence' }); }, 3000); });
+      
+      // ---- EKLEME: Ring kontrolü ----
+      CALL.rings(me, res);
+
+      req.on('close', () => { 
+        set.delete(res); 
+        if (!set.size) setTimeout(() => { 
+          if (!(clients.get(me) || { size: 0 }).size) { 
+            // ---- EKLEME: Çıkışta aramalardan düşür ----
+            CALL.leaveAll(me); 
+            broadcast({ type: 'presence' }); 
+          } 
+        }, 3000); 
+      });
       return;
     }
     if (M === 'POST' && p === '/api/groups') {
@@ -362,11 +380,22 @@ const server = http.createServer(async (req, res) => {
       const n = String(b.new || ''); if (n.length < 6 || n.length > 200) return J(res, 400, { error: 'Yeni şifre en az 6 karakter olmalı' });
       Object.assign(U, mkPass(n)); dropSessions(me, sessKey(req)); save(); return J(res, 200, {});
     }
-    if (M === 'POST' && p === '/api/logout') { delete db.sessions[sessKey(req)]; cookie(res, '', 0, req); save(); return J(res, 200, {}); }
-    if (M === 'POST' && p === '/api/logout-all') { dropSessions(me); cookie(res, '', 0, req); save(); return J(res, 200, {}); }
+    if (M === 'POST' && p === '/api/logout') { 
+      // ---- EKLEME: Çıkış yaparken aramadan ayrıl ----
+      CALL.leaveAll(me);
+      delete db.sessions[sessKey(req)]; cookie(res, '', 0, req); save(); return J(res, 200, {}); 
+    }
+    if (M === 'POST' && p === '/api/logout-all') { 
+      CALL.leaveAll(me);
+      dropSessions(me); cookie(res, '', 0, req); save(); return J(res, 200, {}); 
+    }
     if (M === 'POST' && p === '/api/delete') {
       const b = await body(req), pk = 'pw:' + me, w = wait([pk, 8]); if (w) return tooMany(res, w);
       if (!okPass(U, String(b.p || ''))) { strike(pk); return J(res, 403, { error: 'Şifre hatalı' }); }
+      
+      // ---- EKLEME: Hesap silinirken aramadan ayrıl ----
+      CALL.leaveAll(me);
+
       delete db.users[me]; dropSessions(me); delete db.reads[me]; delete db.follows[me];
       for (const k in db.follows) db.follows[k] = db.follows[k].filter(x => x !== me);
       for (const g of Object.values(db.groups)) if (g.members.includes(me)) { g.members = g.members.filter(x => x !== me); if (!g.members.length) dropGroup(g.id); else if (g.owner === me) g.owner = g.members[0]; }
