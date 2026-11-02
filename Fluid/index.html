@@ -206,7 +206,39 @@ html.mobile,.mobile body{overscroll-behavior:none}
 .mobile .pgtop{gap:18px;padding-left:18px;padding-right:18px}
 .notes::-webkit-scrollbar{height:8px}.notes::-webkit-scrollbar-thumb{background:rgba(var(--ar),.4);border-radius:9px}.notes::-webkit-scrollbar-thumb:hover{background:rgba(var(--ar),.65)}
 .mobile .notes{scrollbar-width:none}.mobile .notes::-webkit-scrollbar{display:none}
+/* ---- Frutiger Aero ---- */
+#fv{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:0;display:none;pointer-events:none}
+body.fa #fv{display:block}body.fa.novid #fv{display:none}
+#fish{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden;display:none}body.fa.novid #fish{display:block}
+.fh{position:absolute;left:-140px;width:var(--s);animation:swim var(--d) linear var(--l) infinite}
+.fh i{display:block;animation:fb 3.4s ease-in-out infinite}.fh svg{width:100%;height:auto;display:block;transform:scaleX(-1);filter:drop-shadow(0 4px 8px rgba(0,60,120,.35))}
+.fh.rv{animation-name:swimr}.fh.rv svg{transform:none}
+@keyframes swim{to{transform:translateX(calc(100vw + 280px))}}
+@keyframes swimr{from{transform:translateX(calc(100vw + 280px))}to{transform:none}}
+@keyframes fb{50%{transform:translateY(-10px)}}
+@keyframes lgf{50%{transform:translateY(-3px)}}
+body.fa{--bg1:#0a6fb8;--bg2:#12b8c9;--line:rgba(255,255,255,.45);--glass:rgba(255,255,255,.14);--mut:#d8f6ff;--tx:#fff;
+ background:radial-gradient(900px 600px at 20% -10%,rgba(255,255,255,.55),transparent 60%),radial-gradient(800px 500px at 90% 110%,#46e6a6 0,transparent 55%),linear-gradient(170deg,#58c8ff,#1b86d6 45%,#0a5aa8)}
+body.fa::before{content:"";position:fixed;inset:0 -80px;z-index:0;pointer-events:none;background:repeating-linear-gradient(105deg,transparent 0 90px,rgba(255,255,255,.07) 90px 150px);-webkit-mask-image:linear-gradient(180deg,#000,transparent 70%);mask-image:linear-gradient(180deg,#000,transparent 70%);animation:rays 14s ease-in-out infinite alternate}
+@keyframes rays{to{transform:translateX(60px)}}
+body.fa .glass{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.1) 45%,rgba(255,255,255,.15));border:1px solid rgba(255,255,255,.55);box-shadow:0 8px 32px rgba(0,60,120,.35),inset 0 1px 0 rgba(255,255,255,.85),inset 0 -1px 0 rgba(255,255,255,.2)}
+body.fa .btn{background:linear-gradient(180deg,rgba(255,255,255,.7) 0,rgba(255,255,255,.12) 50%,transparent 51%),linear-gradient(135deg,var(--c1),var(--c2));color:#033a5c;border:1px solid rgba(255,255,255,.75);border-radius:99px;box-shadow:0 4px 14px rgba(0,80,140,.4),inset 0 1px 0 #fff}
+body.fa .btn:hover{background-position:0 0;box-shadow:0 8px 24px rgba(0,120,200,.55),inset 0 1px 0 #fff}
+body.fa .ghost{border-color:rgba(255,255,255,.6);background:linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,.06))}
+body.fa input,body.fa textarea{background:rgba(255,255,255,.22);border-color:rgba(255,255,255,.55)}
+body.fa ::placeholder{color:#e2f7ff;opacity:.85}
+body.fa .m.me{background:linear-gradient(180deg,rgba(255,255,255,.6),transparent 55%),linear-gradient(135deg,var(--a1),var(--a2));color:#033a5c;box-shadow:0 3px 10px rgba(0,80,140,.3),inset 0 1px 0 #fff}
+body.fa .m.th{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.14));border-color:rgba(255,255,255,.55)}
+body.fa .dot{border-color:#1b86d6}
+body.fa .lgi{animation:lgf 5s ease-in-out infinite}
 </style></head><body>
+<video id="fv" muted loop playsinline preload="none" aria-hidden="true"></video>
+<div id="fish" aria-hidden="true">
+  <div class="fh" style="top:22%;--s:96px;--d:30s;--l:-6s;color:#ffd84d"><i><svg viewBox="0 0 64 32"><use href="#i-fish"/></svg></i></div>
+  <div class="fh rv" style="top:48%;--s:70px;--d:24s;--l:-14s;color:#ff9a5c"><i><svg viewBox="0 0 64 32"><use href="#i-fish"/></svg></i></div>
+  <div class="fh" style="top:70%;--s:120px;--d:38s;--l:-20s;color:#7dffd0"><i><svg viewBox="0 0 64 32"><use href="#i-fish"/></svg></i></div>
+  <div class="fh rv" style="top:84%;--s:54px;--d:20s;--l:-3s;color:#fff"><i><svg viewBox="0 0 64 32"><use href="#i-fish"/></svg></i></div>
+</div>
 <canvas id="snow"></canvas>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
 <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4 3.5V16h-.5A2.5 2.5 0 0 1 4 13.5z"/><path d="M8.5 10h7"/></symbol>
@@ -226,6 +258,8 @@ html.mobile,.mobile body{overscroll-behavior:none}
 <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></symbol>
 <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.5"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.5"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.5"/></symbol>
 <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M3.8 16.75l16.4-9.5"/><path d="M9.5 4.4 12 6.7l2.5-2.3M9.5 19.6 12 17.3l2.5 2.3"/><circle cx="12" cy="12" r="1.8"/></symbol>
+<symbol id="i-aero" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M6.2 8.6a6.8 6.8 0 0 1 3.6-2.9"/><path d="M7.4 12.6c1.8-2.8 5.4-3.1 8 0-2.6 3.1-6.2 2.8-8 0z"/><path d="M15.4 12.6l2.6-2v4z"/><circle cx="9.7" cy="12" r=".7" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-fish" viewBox="0 0 64 32"><path fill="currentColor" d="M46 16 62 5v22z"/><path fill="currentColor" opacity=".8" d="M20 7 30 1 36 8z"/><ellipse cx="28" cy="16" rx="22" ry="11" fill="currentColor"/><ellipse cx="26" cy="11" rx="14" ry="4" fill="#fff" opacity=".35"/><circle cx="14" cy="14" r="2.6" fill="#fff"/><circle cx="13.4" cy="14" r="1.3" fill="#04345a"/></symbol>
 </svg>
 
 <section class="screen" id="login"><div class="card glass"><button class="ghost" id="lgb" style="position:absolute;top:14px;right:14px;padding:6px 11px;font-size:12px">EN</button>
@@ -286,9 +320,9 @@ const av=(x,c='')=>`<div class="av ${c}">${x.av?`<img src="/avatar/${encodeURICo
 const note=x=>x.note&&Date.now()-x.note.ts<DAY?x.note:null;
 const swap=(hide,show)=>{hide.style.animation='out .4s forwards';setTimeout(()=>{hide.classList.remove('on');hide.style.animation='';show.classList.add('on')},380)};
 const authErr=e=>{if(e&&e.status==401&&S.me)toLogin()};
-function applySettings(){const s=S.me.settings,a=ACC[s.accent]||ACC.ice,r=document.documentElement.style;
+function applySettings(){const s=S.me.settings,a=s.frutiger?AEROC:(ACC[s.accent]||ACC.ice),r=document.documentElement.style;
   r.setProperty('--ice',a[0]);r.setProperty('--a1',a[1]);r.setProperty('--a2',a[2]);r.setProperty('--ar',a[3]);
-  $('#snow').style.display=s.snow?'':'none';document.body.classList.toggle('calm',!!s.calm)}
+  $('#snow').style.display=(s.snow||s.frutiger)?'':'none';document.body.classList.toggle('calm',!!s.calm);aeroSync()}
 /* giriş */
 let mode='login';
 const setMode=m=>{mode=m;$('#ti').style.transform=m=='login'?'none':'translateX(100%)';$('#tl').classList.toggle('on',m=='login');$('#tr').classList.toggle('on',m!='login');
@@ -303,7 +337,7 @@ async function enter(instant){applySettings();if(S.me.settings.lang&&S.me.settin
   try{const d=await api('GET','/users');S.users=d.users;S.groups=d.groups||[]}catch(e){}
   renderList();renderMain();if(instant){$('#login').classList.remove('on');$('#app').classList.add('on')}else swap($('#login'),$('#app'))}
 function toLogin(){if(S.es)S.es.close();S.me=null;S.cur=null;const r=document.documentElement.style;['--ice','--a1','--a2','--ar'].forEach(k=>r.removeProperty(k));
-  $('#snow').style.display='';document.body.classList.remove('calm');$('#p').value='';$('#app').classList.remove('chat','inchat');swap($('#app'),$('#login'))}
+  $('#snow').style.display='';document.body.classList.remove('calm');aeroSync();$('#p').value='';$('#app').classList.remove('chat','inchat');swap($('#app'),$('#login'))}
 $('#nOut').onclick=async()=>{await api('POST','/logout').catch(()=>{});toLogin()};
 async function refresh(){try{const prevA=S.cur&&S.cur[0]!='_'&&convOf(S.cur)?convOf(S.cur).arch:null,keep=S.users.find(x=>x.temp&&x.u==S.cur);const d=await api('GET','/users');S.users=d.users;S.groups=d.groups||[];if(keep&&!S.users.find(x=>x.u==keep.u))S.users.push(keep);renderList();if(S.cur&&S.cur[0]!='_'){hdr();const c=convOf(S.cur);if(prevA&&c&&!c.arch)loadMsgs(S.cur)}}catch(e){authErr(e)}}
 /* canlı bağlantı */
@@ -320,7 +354,7 @@ function connect(){if(S.es)S.es.close();let first=true;const es=S.es=new EventSo
 const chk=()=>{if(S.me)api('GET','/me').catch(()=>{})};addEventListener('focus',chk);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&S.me){chk();if(S.cur&&S.cur[0]!='_')markRead(S.cur)}});
 let ac;function ping(from,t){const s=S.me.settings;
-  if(s.sound){try{ac=ac||new AudioContext();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.setValueAtTime(.12,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.25);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.25)}catch(e){}}
+  if(s.sound&&s.frutiger){blop(1.4);setTimeout(()=>blop(1.9),130)}else if(s.sound){try{ac=ac||new AudioContext();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.setValueAtTime(.12,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.25);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.25)}catch(e){}}
   if(s.notify&&document.hidden&&window.Notification&&Notification.permission=='granted')new Notification(from,{body:t})}
 /* liste & notlar */
 $('#notes').addEventListener('wheel',e=>{const n=e.currentTarget;if(e.deltaY&&!e.shiftKey&&n.scrollWidth>n.clientWidth){n.scrollLeft+=e.deltaY;e.preventDefault()}},{passive:false});
@@ -468,7 +502,7 @@ function hdr(){if(!$('#hi'))return;renderAbar();if(isG(S.cur)){const g=G(S.cur);
   const x=S.users.find(z=>z.u==S.cur);if(!x)return;$('#hav').innerHTML=av(x,'s');$('#hi').innerHTML=`<b>${x.u}</b><small>${x.online?t('Çevrimiçi'):esc(x.bio||'')}</small>`}
 function renderMain(){const c=S.cur;$('#app').classList.toggle('inchat',!!c&&c[0]!='_');
   if(c&&c.startsWith('__u:'))return renderUser(c.slice(4));if(c==='__profile')return renderProfile();if(c==='__settings')return renderSettings();
-  if(!c)return $('#main').innerHTML=`<div class="empty"><div class="big"><svg class="ic" style="width:84px;height:84px;stroke-width:1.2"><use href="#i-snow"/></svg></div><h2>${t('Bir sohbet seç')}</h2><p>${t('Ya da birinin notuna dokun')}</p></div>`;
+  if(!c)return $('#main').innerHTML=`<div class="empty"><div class="big"><svg class="ic" style="width:84px;height:84px;stroke-width:1.2"><use href="#i-${S.me.settings.frutiger?'aero':'snow'}"/></svg></div><h2>${t('Bir sohbet seç')}</h2><p>${t('Ya da birinin notuna dokun')}</p></div>`;
   $('#main').innerHTML=`<div class="hd"><button class="ghost" id="back" style="display:none">${ic('back')}</button><span id="hav"></span><div id="hi"></div></div><div class="abar" id="abar" hidden></div><div class="msgs" id="ms"></div><div class="rbar" id="rbar" hidden></div><div class="gpick" id="gp" hidden></div>
   <div class="send"><button class="gifbtn" id="pbtn" type="button">${ic('cam')}</button>${S.cfg.gif?'<button class="gifbtn" id="gbtn" type="button">GIF</button>':''}<input id="mi" placeholder="${t('Mesaj yaz…')}" autocomplete="off" maxlength="2000"><button class="btn" id="sb">${ic('send')}</button></div>`;
   hdr();if(isMob()){$('#back').style.display='grid';$('#back').onclick=()=>history.state&&history.state.v?history.back():goList()}
@@ -514,7 +548,7 @@ function renderSettings(){const s=S.me.settings;
   <div class="sc glass"><b>${t('Görünüm')}</b>
   <div class="sr"><div>${t('Dil')}<small>${t('Arayüz dili')}</small></div><div class="lg2"><button data-l="tr" class="${LANG=='tr'?'on':''}">Türkçe</button><button data-l="en" class="${LANG=='en'?'on':''}">English</button></div></div>
   <div class="sr"><div>${t('Vurgu rengi')}<small>${t('Butonlar ve ışıltılar')}</small></div><div class="sws">${Object.keys(ACC).map(k=>`<button class="swt ${s.accent==k?'on':''}" data-a="${k}" title="${t(ACN[k])}" style="background:linear-gradient(135deg,${ACC[k][1]},${ACC[k][2]});color:${ACC[k][0]}"></button>`).join('')}</div></div>
-  ${sw('snow','Kar yağışı','Arka plandaki kar taneleri')}${sw('calm','Animasyonları azalt','Daha sakin ve hafif arayüz')}</div>
+  ${sw('snow','Kar yağışı','Arka plandaki kar taneleri')}${sw('calm','Animasyonları azalt','Daha sakin ve hafif arayüz')}${sw('frutiger','Frutiger Aero','Parlak su altı teması, balıklar ve blop sesleri')}${sw('fmusic','Frutiger müziği','Tema açıkken arkada müzik çal')}</div>
   <div class="sc glass"><b>${t('Bildirimler')}</b>${sw('sound','Mesaj sesi','Yeni mesajda kısa bir ses çal')}${sw('notify','Masaüstü bildirimi','Sekme arka plandayken haber ver')}</div>
   <div class="sc glass"><b>${t('Gizlilik')}</b>${sw('showOnline','Çevrimiçi durumu','Arkadaşların seni çevrimiçi görsün')}</div>
   <div class="sc glass"><b>${t('Güvenlik')}</b><input id="po" type="password" placeholder="${t('Mevcut şifre')}" autocomplete="current-password"><input id="pn" type="password" placeholder="${t('Yeni şifre (en az 6)')}" autocomplete="new-password"><div class="err" id="pe"></div>
@@ -543,8 +577,54 @@ async function setSet(patch){Object.assign(S.me.settings,patch);applySettings();
 /* kar */
 const cv=$('#snow'),cx=cv.getContext('2d');let W,H;const fl=Array.from({length:70},()=>({x:Math.random(),y:Math.random(),r:Math.random()*2+.6,v:Math.random()*.4+.15,d:Math.random()*6}));
 const rs=()=>{W=cv.width=innerWidth;H=cv.height=innerHeight};rs();addEventListener('resize',rs);
-(function t(){requestAnimationFrame(t);if(S.me&&!S.me.settings.snow)return;cx.clearRect(0,0,W,H);cx.fillStyle='rgba(200,240,255,.7)';
+(function t(){requestAnimationFrame(t);const fa=document.body.classList.contains('fa');if(!fa&&S.me&&!S.me.settings.snow)return;cx.clearRect(0,0,W,H);
+  if(fa){for(const f of fl){f.y-=f.v/260;f.d+=.012;if(f.y<-.05)f.y=1.05;const x=(f.x+Math.sin(f.d)*.015)*W,y=f.y*H,r=f.r*4+2;
+    cx.beginPath();cx.arc(x,y,r,0,7);cx.fillStyle='rgba(255,255,255,.08)';cx.fill();cx.strokeStyle='rgba(255,255,255,.55)';cx.lineWidth=1.2;cx.stroke();
+    cx.beginPath();cx.arc(x-r*.35,y-r*.35,r*.22,0,7);cx.fillStyle='rgba(255,255,255,.85)';cx.fill()}return}
+  cx.fillStyle='rgba(200,240,255,.7)';
   for(const f of fl){f.y+=f.v/300;f.d+=.01;if(f.y>1)f.y=0;cx.beginPath();cx.arc((f.x+Math.sin(f.d)*.02)*W,f.y*H,f.r,0,7);cx.fill()}})();
+/* ---- Frutiger Aero: tema, müzik, blop ---- */
+const AERO={},AEROC=['#c8fff4','#4fd8ff','#5cf0a0','200,255,244'];
+const actx=()=>AERO.c||(AERO.c=new(window.AudioContext||window.webkitAudioContext)());
+function blop(k=1){try{const c=actx();if(c.state=='suspended')c.resume();const t0=c.currentTime,o=c.createOscillator(),g=c.createGain(),f=(420+Math.random()*220)*k;
+  o.type='sine';o.frequency.setValueAtTime(f*.6,t0);o.frequency.exponentialRampToValueAtTime(f*1.6,t0+.07);
+  g.gain.setValueAtTime(0,t0);g.gain.linearRampToValueAtTime(.22,t0+.012);g.gain.exponentialRampToValueAtTime(.001,t0+.16);
+  o.connect(g);g.connect(c.destination);o.start(t0);o.stop(t0+.18)}catch(e){}}
+const CH=[[130.81,164.81,196,246.94,293.66],[110,164.81,196,246.94,261.63],[87.31,130.81,196,220,329.63],[98,146.83,164.81,220,246.94]];
+function pad(f,t,v){const c=AERO.c;for(const dt of[-6,6]){const o=c.createOscillator(),g=c.createGain(),lp=c.createBiquadFilter();
+  o.type='triangle';o.frequency.value=f;o.detune.value=dt;lp.type='lowpass';lp.frequency.value=900;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(v,t+2);g.gain.setValueAtTime(v,t+6);g.gain.linearRampToValueAtTime(0,t+9.5);
+  o.connect(lp);lp.connect(g);g.connect(AERO.bus);o.start(t);o.stop(t+9.6)}}
+function bell(f,t){const c=AERO.c,o=c.createOscillator(),o2=c.createOscillator(),g=c.createGain(),g2=c.createGain();
+  o.type=o2.type='sine';o.frequency.value=f;o2.frequency.value=f*2.01;g2.gain.value=.3;
+  g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.05,t+.01);g.gain.exponentialRampToValueAtTime(.0005,t+1.8);
+  o.connect(g);o2.connect(g2);g2.connect(g);g.connect(AERO.bus);o.start(t);o2.start(t);o.stop(t+1.9);o2.stop(t+1.9)}
+function bar(){if(!AERO.synth)return;const c=AERO.c,t0=c.currentTime+.1,ch=CH[AERO.step++%4];
+  ch.forEach((f,i)=>pad(f,t0,i<2?.06:.035));
+  for(let k=0;k<11;k++)if(Math.random()<.75)bell(ch[Math.random()*ch.length|0]*(Math.random()<.5?2:4),t0+k*.65+Math.random()*.12);
+  AERO.tm=setTimeout(bar,7000)}
+async function musicStart(){
+  if(AERO.busy||AERO.synth||(AERO.el&&!AERO.el.paused))return;AERO.busy=1;
+  try{
+    if(AERO.file===undefined){try{AERO.file=(await fetch('/media/frutiger.mp3',{method:'HEAD'})).ok}catch(e){AERO.file=false}}
+    const s=S.me&&S.me.settings;if(!s||!s.frutiger||!s.fmusic)return;
+    if(AERO.file){if(!AERO.el){AERO.el=new Audio('/media/frutiger.mp3');AERO.el.loop=true;AERO.el.volume=.5}await AERO.el.play().catch(()=>{});return}
+    const c=actx();await c.resume().catch(()=>{});if(c.state!='running'||AERO.synth)return;
+    if(!AERO.bus){const m=c.createGain(),bus=c.createGain(),d=c.createDelay(1),fb=c.createGain(),lp=c.createBiquadFilter();
+      m.gain.value=0;bus.gain.value=.7;d.delayTime.value=.42;fb.gain.value=.4;lp.type='lowpass';lp.frequency.value=2200;
+      bus.connect(m);bus.connect(d);d.connect(lp);lp.connect(fb);fb.connect(d);lp.connect(m);m.connect(c.destination);Object.assign(AERO,{m,bus})}
+    AERO.m.gain.cancelScheduledValues(c.currentTime);AERO.m.gain.setTargetAtTime(.9,c.currentTime,1.2);AERO.synth=true;AERO.step=0;bar()
+  }finally{AERO.busy=0}}
+function musicStop(){if(AERO.el)AERO.el.pause();if(AERO.synth){AERO.synth=false;clearTimeout(AERO.tm);AERO.m.gain.setTargetAtTime(0,AERO.c.currentTime,.4)}}
+function aeroSync(){const s=S.me&&S.me.settings,on=!!(s&&s.frutiger),v=$('#fv');document.body.classList.toggle('fa',on);
+  if(on){if(!v.getAttribute('src'))v.src='/media/frutiger.mp4';v.play().catch(()=>{})}else v.pause();
+  on&&s.fmusic?musicStart():musicStop();
+  document.querySelectorAll('use[href="#i-snow"],use[href="#i-aero"]').forEach(u=>u.setAttribute('href',on?'#i-aero':'#i-snow'))}
+$('#fv').addEventListener('error',()=>document.body.classList.add('novid'));
+$('#fv').addEventListener('loadeddata',()=>document.body.classList.remove('novid'));
+document.addEventListener('pointerdown',e=>{const s=S.me&&S.me.settings;if(!s||!s.frutiger)return;
+  if(s.fmusic)musicStart();if(s.sound&&e.target.closest('button,.pick,.gi'))blop()},true);
+Object.assign(EN,{"Frutiger Aero":"Frutiger Aero","Parlak su altı teması, balıklar ve blop sesleri":"Glossy underwater theme, fish and bloop sounds","Frutiger müziği":"Frutiger music","Tema açıkken arkada müzik çal":"Play background music while the theme is on"});
 /* başlangıç */
 history.replaceState(null,'');setMob();setLang(LANG,1);
 (async()=>{try{S.cfg=await api('GET','/config')}catch(e){$('#login').classList.add('on');$('#err').textContent=e.message;return}
