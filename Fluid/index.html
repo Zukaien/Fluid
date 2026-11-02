@@ -231,6 +231,38 @@ body.fa .m.me{background:linear-gradient(180deg,rgba(255,255,255,.6),transparent
 body.fa .m.th{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.14));border-color:rgba(255,255,255,.55)}
 body.fa .dot{border-color:#1b86d6}
 body.fa .lgi{animation:lgf 5s ease-in-out infinite}
+.hd .callbtns{margin-left:auto;display:flex;gap:8px;flex:none}
+.cab{width:42px;height:42px;padding:0;border-radius:50%;display:grid;place-items:center}.cab .ic{width:20px;height:20px}
+.cab:hover{transform:scale(1.08)}
+.callov{position:fixed;inset:0;z-index:24;display:none;place-items:center;background:rgba(2,8,20,.78);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.callov.on{display:grid;animation:in .45s var(--ease)}
+#stage.on{display:flex;flex-direction:column;background:rgba(4,12,28,.92)}
+.ringbox{width:min(420px,92vw);padding:36px 28px 28px;border-radius:32px;display:grid;justify-items:center;gap:12px;text-align:center}
+.rings{position:relative;width:128px;height:128px;display:grid;place-items:center;margin:8px 0 4px}
+.rings b,.rings em{position:absolute;border-radius:50%;border:2px solid rgba(var(--ar),.4);animation:cpulse 2.2s var(--ease) infinite;pointer-events:none}
+.rings b{inset:0}.rings em{inset:-16px;animation-delay:.45s;border-color:rgba(var(--ar),.18)}
+@keyframes cpulse{50%{transform:scale(1.14);opacity:.35}}
+.sig{width:56px;height:56px;color:var(--ice);filter:drop-shadow(0 0 14px rgba(var(--ar),.55));animation:spin 10s linear infinite}
+.tiles{flex:1;display:flex;flex-wrap:wrap;gap:10px;padding:16px;align-content:center;justify-content:center;min-height:0;position:relative}
+.tile{position:relative;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:22px;overflow:hidden;width:min(460px,48vw);min-width:200px;aspect-ratio:4/3;display:grid;place-items:center}
+.tile video{width:100%;height:100%;object-fit:cover;background:#04122a}
+.tile.audio video{opacity:0;position:absolute}
+.tile .av.phav{position:absolute}
+.tile:not(.audio) .av.phav{display:none}
+.tile.me{width:min(240px,36vw);aspect-ratio:3/4}
+.tile small{position:absolute;left:12px;bottom:10px;background:rgba(4,12,28,.72);padding:4px 10px;border-radius:99px;font-size:12px}
+.phav{width:88px;height:88px;font-size:32px}
+.cbar{display:flex;justify-content:center;gap:14px;padding:16px 16px calc(18px + env(safe-area-inset-bottom))}
+.cact{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);background:rgba(255,255,255,.1)}
+.cact .ic{width:24px;height:24px}.cact.on{background:rgba(255,120,150,.22);color:#ff9fb2}
+.cact.hang{background:linear-gradient(135deg,#ff8fa8,#ff5d73);color:#2a0410;border:0}
+.cact:hover{transform:scale(1.08)}
+.toast{position:fixed;left:50%;bottom:28px;transform:translate(-50%,16px);z-index:32;padding:12px 18px;border-radius:16px;opacity:0;pointer-events:none;transition:.35s var(--ease);max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.waitn{color:var(--mut);font-size:14px}
+.mobile .tile{width:100%;min-width:0;aspect-ratio:16/11}
+.mobile .tile.me{width:34vw;aspect-ratio:3/4;position:absolute;right:12px;bottom:96px;z-index:2}
+.mobile .hd .callbtns{gap:4px}.mobile .cab{width:40px;height:40px}
 </style></head><body>
 <video id="fv" muted loop playsinline preload="none" aria-hidden="true"></video>
 <div id="fish" aria-hidden="true">
@@ -260,6 +292,11 @@ body.fa .lgi{animation:lgf 5s ease-in-out infinite}
 <symbol id="i-snow" viewBox="0 0 24 24"><path d="M12 2.5v19M3.8 7.25l16.4 9.5M3.8 16.75l16.4-9.5"/><path d="M9.5 4.4 12 6.7l2.5-2.3M9.5 19.6 12 17.3l2.5 2.3"/><circle cx="12" cy="12" r="1.8"/></symbol>
 <symbol id="i-aero" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9.2"/><path d="M6.2 8.6a6.8 6.8 0 0 1 3.6-2.9"/><path d="M7.4 12.6c1.8-2.8 5.4-3.1 8 0-2.6 3.1-6.2 2.8-8 0z"/><path d="M15.4 12.6l2.6-2v4z"/><circle cx="9.7" cy="12" r=".7" fill="currentColor" stroke="none"/></symbol>
 <symbol id="i-fish" viewBox="0 0 64 32"><path fill="currentColor" d="M46 16 62 5v22z"/><path fill="currentColor" opacity=".8" d="M20 7 30 1 36 8z"/><ellipse cx="28" cy="16" rx="22" ry="11" fill="currentColor"/><ellipse cx="26" cy="11" rx="14" ry="4" fill="#fff" opacity=".35"/><circle cx="14" cy="14" r="2.6" fill="#fff"/><circle cx="13.4" cy="14" r="1.3" fill="#04345a"/></symbol>
+<symbol id="i-call" viewBox="0 0 24 24"><circle cx="12" cy="16" r="2.1"/><path d="M8.4 12.6a5.1 5.1 0 0 1 7.2 0"/><path d="M5.6 9.6a9 9 0 0 1 12.8 0"/><path d="M3.4 6.6a12.4 12.4 0 0 1 17.2 0"/></symbol>
+<symbol id="i-hang" viewBox="0 0 24 24"><path d="M4.5 10.5c5-4.2 10-4.2 15 0"/><path d="M7 13.2 5.2 11.2M17 13.2l1.8-2"/><rect x="8.4" y="14.2" width="7.2" height="3.2" rx="1.6"/></symbol>
+<symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M6 12.2a6 6 0 0 0 12 0M12 18.2V21M9 21h6"/></symbol>
+<symbol id="i-micoff" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3"/><path d="M6 12.2a6 6 0 0 0 12 0M12 18.2V21M9 21h6M5 5l14 14"/></symbol>
+<symbol id="i-vidoff" viewBox="0 0 24 24"><rect x="3.5" y="7" width="13" height="10" rx="2"/><path d="M16.5 10.5 20.5 8v8l-4-2.5M4 5l16 14"/></symbol>
 </svg>
 
 <section class="screen" id="login"><div class="card glass"><button class="ghost" id="lgb" style="position:absolute;top:14px;right:14px;padding:6px 11px;font-size:12px">EN</button>
@@ -289,6 +326,9 @@ body.fa .lgi{animation:lgf 5s ease-in-out infinite}
 <div class="modal" id="gm"><div class="card glass" id="gc"></div></div>
 <input type="file" id="file" accept="image/*" hidden><input type="file" id="pfile" accept="image/*" hidden>
 <div class="modal" id="iv"><img id="ivi" alt=""></div>
+<div class="callov" id="ring"><div class="ringbox glass" id="ringin"></div></div>
+<div class="callov" id="stage"></div>
+<div class="glass toast" id="toast"></div>
 
 <script>
 const $=s=>document.querySelector(s),DAY=864e5;
@@ -336,7 +376,7 @@ $('#go').onclick=async()=>{const u=$('#u').value.trim().toLowerCase(),p=$('#p').
 async function enter(instant){applySettings();if(S.me.settings.lang&&S.me.settings.lang!=LANG)setLang(S.me.settings.lang,1);connect();S.cur=null;
   try{const d=await api('GET','/users');S.users=d.users;S.groups=d.groups||[]}catch(e){}
   renderList();renderMain();if(instant){$('#login').classList.remove('on');$('#app').classList.add('on')}else swap($('#login'),$('#app'))}
-function toLogin(){if(S.es)S.es.close();S.me=null;S.cur=null;const r=document.documentElement.style;['--ice','--a1','--a2','--ar'].forEach(k=>r.removeProperty(k));
+function toLogin(){hangup(1);if(S.es)S.es.close();S.me=null;S.cur=null;const r=document.documentElement.style;['--ice','--a1','--a2','--ar'].forEach(k=>r.removeProperty(k));
   $('#snow').style.display='';document.body.classList.remove('calm');aeroSync();$('#p').value='';$('#app').classList.remove('chat','inchat');swap($('#app'),$('#login'))}
 $('#nOut').onclick=async()=>{await api('POST','/logout').catch(()=>{});toLogin()};
 async function refresh(){try{const prevA=S.cur&&S.cur[0]!='_'&&convOf(S.cur)?convOf(S.cur).arch:null,keep=S.users.find(x=>x.temp&&x.u==S.cur);const d=await api('GET','/users');S.users=d.users;S.groups=d.groups||[];if(keep&&!S.users.find(x=>x.u==keep.u))S.users.push(keep);renderList();if(S.cur&&S.cur[0]!='_'){hdr();const c=convOf(S.cur);if(prevA&&c&&!c.arch)loadMsgs(S.cur)}}catch(e){authErr(e)}}
@@ -345,6 +385,7 @@ function connect(){if(S.es)S.es.close();let first=true;const es=S.es=new EventSo
   es.onopen=()=>{if(first){first=false;return}refresh();if(S.cur&&S.cur[0]!='_')loadMsgs(S.cur)};
   es.onerror=()=>{if(es.readyState==2)chk()};
   es.onmessage=e=>{const d=JSON.parse(e.data);
+    if(d.type=='call'){onCallEv(d);return}
     if(d.type=='edit'||d.type=='del'){const mn=d.m.f==S.me.u;applyUpdate(d.g||(mn?d.to:d.m.f),d.m);return}
     if(d.type=='msg'){const mine=d.m.f==S.me.u,other=d.g||(mine?d.to:d.m.f),x=convOf(other);
       if(!x){refresh();if(!mine)ping(other,d.m.t||(d.m.i?'📷':'GIF'));return}
@@ -503,9 +544,10 @@ function hdr(){if(!$('#hi'))return;renderAbar();if(isG(S.cur)){const g=G(S.cur);
 function renderMain(){const c=S.cur;$('#app').classList.toggle('inchat',!!c&&c[0]!='_');
   if(c&&c.startsWith('__u:'))return renderUser(c.slice(4));if(c==='__profile')return renderProfile();if(c==='__settings')return renderSettings();
   if(!c)return $('#main').innerHTML=`<div class="empty"><div class="big"><svg class="ic" style="width:84px;height:84px;stroke-width:1.2"><use href="#i-${S.me.settings.frutiger?'aero':'snow'}"/></svg></div><h2>${t('Bir sohbet seç')}</h2><p>${t('Ya da birinin notuna dokun')}</p></div>`;
-  $('#main').innerHTML=`<div class="hd"><button class="ghost" id="back" style="display:none">${ic('back')}</button><span id="hav"></span><div id="hi"></div></div><div class="abar" id="abar" hidden></div><div class="msgs" id="ms"></div><div class="rbar" id="rbar" hidden></div><div class="gpick" id="gp" hidden></div>
+  $('#main').innerHTML=`<div class="hd"><button class="ghost" id="back" style="display:none">${ic('back')}</button><span id="hav"></span><div id="hi"></div><div class="callbtns"><button class="ghost cab" id="ca" data-t="${t('Sesli arama')}">${ic('call')}</button><button class="ghost cab" id="cv" data-t="${t('Görüntülü arama')}">${ic('cam')}</button></div></div><div class="abar" id="abar" hidden></div><div class="msgs" id="ms"></div><div class="rbar" id="rbar" hidden></div><div class="gpick" id="gp" hidden></div>
   <div class="send"><button class="gifbtn" id="pbtn" type="button">${ic('cam')}</button>${S.cfg.gif?'<button class="gifbtn" id="gbtn" type="button">GIF</button>':''}<input id="mi" placeholder="${t('Mesaj yaz…')}" autocomplete="off" maxlength="2000"><button class="btn" id="sb">${ic('send')}</button></div>`;
   hdr();if(isMob()){$('#back').style.display='grid';$('#back').onclick=()=>history.state&&history.state.v?history.back():goList()}
+  $('#ca').onclick=()=>beginCall(false);$('#cv').onclick=()=>beginCall(true);
   $('#sb').onclick=send;$('#sb').addEventListener('pointerdown',e=>e.preventDefault());$('#mi').addEventListener('keydown',e=>e.key=='Enter'&&send());bindChat();if(!isMob())$('#mi').focus()}
 async function send(){const i=$('#mi'),t=i.value.trim();if(!t)return;const to=S.cur;i.value='';
   if(S.edit){try{const d=await api('PUT','/messages/'+encodeURIComponent(to)+'/'+S.edit,{t});S.edit=null;renderRbar();applyUpdate(to,d.m)}catch(e){i.value=t;alert(e.message);authErr(e)}return}
@@ -624,7 +666,69 @@ $('#fv').addEventListener('error',()=>document.body.classList.add('novid'));
 $('#fv').addEventListener('loadeddata',()=>document.body.classList.remove('novid'));
 document.addEventListener('pointerdown',e=>{const s=S.me&&S.me.settings;if(!s||!s.frutiger)return;
   if(s.fmusic)musicStart();if(s.sound&&e.target.closest('button,.pick,.gi'))blop()},true);
-Object.assign(EN,{"Frutiger Aero":"Frutiger Aero","Parlak su altı teması, balıklar ve blop sesleri":"Glossy underwater theme, fish and bloop sounds","Frutiger müziği":"Frutiger music","Tema açıkken arkada müzik çal":"Play background music while the theme is on"});
+Object.assign(EN,{"Frutiger Aero":"Frutiger Aero","Parlak su altı teması, balıklar ve blop sesleri":"Glossy underwater theme, fish and bloop sounds","Frutiger müziği":"Frutiger music","Tema açıkken arkada müzik çal":"Play background music while the theme is on",
+"Sesli arama":"Voice call","Görüntülü arama":"Video call","Grup araması":"Group call","Bağlanıyor…":"Connecting…","Aranıyor…":"Calling…","Bekleniyor…":"Waiting…","Yanıt yok":"No answer","Arama reddedildi":"Call declined","Arama bitti":"Call ended","Zaten bir aramadasın":"You are already in a call","Bu tarayıcı aramayı desteklemiyor":"This browser does not support calls","Mikrofon veya kamera izni verilmedi":"Microphone or camera permission was not granted","Arama bulunamadı":"Call not found"});
+const CALL={id:null,ice:[{urls:'stun:stun.l.google.com:19302'}],pcs:new Map(),streams:new Map(),local:null,call:null,invite:null,ready:null,muted:false,camoff:false,rt:null};
+const toast=msg=>{const el=$('#toast');if(!el)return;el.textContent=msg;el.classList.add('on');clearTimeout(toast._);toast._=setTimeout(()=>el.classList.remove('on'),3400)};
+const callName=c=>{if(!c)return '';if(isG(c.to)){const g=G(c.to);return g?g.name:t('Grup araması')}return c.from===S.me.u?c.to:c.from};
+function ringTone(on){clearInterval(CALL.rt);CALL.rt=null;if(!on)return;const beep=()=>{try{ac=ac||new AudioContext();const t0=ac.currentTime;[[0,440],[.2,554]].forEach(([d,f])=>{const o=ac.createOscillator(),g=ac.createGain();o.type='sine';o.frequency.value=f;g.gain.setValueAtTime(0,t0+d);g.gain.linearRampToValueAtTime(.13,t0+d+.02);g.gain.exponentialRampToValueAtTime(.001,t0+d+.38);o.connect(g);g.connect(ac.destination);o.start(t0+d);o.stop(t0+d+.42)})}catch(e){}};beep();CALL.rt=setInterval(beep,2100)}
+function showInvite(c){if(CALL.id||CALL.invite)return;CALL.invite=c;ringTone(true);const g=isG(c.to),who=g?null:(S.users.find(z=>z.u==c.from)||{u:c.from,av:0});
+  $('#ring').classList.add('on');$('#ringin').innerHTML=`<div class="rings"><b></b><em></em>${g?`<div class="av phav gav">${ic('users')}</div>`:av(who||{u:c.from,av:0},'phav')}</div><svg class="ic sig"><use href="#i-call"/></svg><h2>${esc(callName(c))}</h2><p class="waitn">${g?esc(c.from)+' · ':''}${t(c.video?'Görüntülü arama':'Sesli arama')}</p><div class="cbar" style="padding:8px 0 0"><button class="cact hang" id="cno">${ic('hang')}</button><button class="cact" id="cyes" style="background:linear-gradient(135deg,var(--a1),var(--a2));color:#04122a;border:0">${ic('call')}</button></div>`;
+  $('#cno').onclick=rejectCall;$('#cyes').onclick=acceptCall;ping(callName(c),t(c.video?'Görüntülü arama':'Sesli arama'))}
+function hideInvite(){ringTone(false);CALL.invite=null;$('#ring').classList.remove('on');$('#ringin').innerHTML=''}
+async function beginCall(video){const to=S.cur;if(!to||to[0]=='_')return;if(CALL.id)return toast(t('Zaten bir aramadasın'));
+  try{const d=await api('POST','/call',{to,video});await bootCall(d.call,d.ice)}catch(e){toast(e.message);authErr(e)}}
+async function acceptCall(){const c=CALL.invite;if(!c)return;hideInvite();try{const d=await api('POST','/call/'+c.id+'/join');await bootCall(d.call,d.ice)}catch(e){toast(e.message);authErr(e)}}
+function rejectCall(){const c=CALL.invite;hideInvite();if(c)api('POST','/call/'+c.id+'/reject').catch(()=>{})}
+function paintStage(){const c=CALL.call;if(!c||!CALL.id)return;
+  const others=c.live.filter(u=>u!==S.me.u),st=$('#cst');
+  if(!$('#tiles')){$('#stage').innerHTML=`<div class="hd" style="background:transparent;border:0"><div id="chi"><b>${esc(callName(c))}</b><small id="cst">${t('Bağlanıyor…')}</small></div></div><div class="tiles" id="tiles"></div><div class="cbar"><button class="cact" id="cmu">${ic('mic')}</button><button class="cact" id="cvid" hidden>${ic('cam')}</button><button class="cact hang" id="chg">${ic('hang')}</button></div>`;
+    $('#cmu').onclick=()=>{CALL.muted=!CALL.muted;if(CALL.local)CALL.local.getAudioTracks().forEach(x=>x.enabled=!CALL.muted);$('#cmu').classList.toggle('on',CALL.muted);$('#cmu').innerHTML=ic(CALL.muted?'micoff':'mic')};
+    $('#cvid').onclick=()=>{CALL.camoff=!CALL.camoff;if(CALL.local)CALL.local.getVideoTracks().forEach(x=>x.enabled=!CALL.camoff);$('#cvid').classList.toggle('on',CALL.camoff);$('#cvid').innerHTML=ic(CALL.camoff?'vidoff':'cam');const tm=$('#tile-me');if(tm)tm.classList.toggle('audio',CALL.camoff||!CALL.call.video)};
+    $('#chg').onclick=()=>hangup()}
+  $('#cvid').hidden=!c.video;if($('#chi b'))$('#chi b').textContent=callName(c);
+  const box=$('#tiles');if(!box)return;
+  const ids=new Set(['me',...others]);
+  if(!$('#tile-me'))box.insertAdjacentHTML('afterbegin',`<div class="tile me ${c.video?'':'audio'}" id="tile-me"><video id="vme" autoplay muted playsinline></video><div class="av phav" id="pme"></div><small>${esc(t('Sen'))}</small></div>`);
+  const vm=$('#vme');if(vm&&CALL.local&&vm.srcObject!==CALL.local)vm.srcObject=CALL.local;$('#tile-me').classList.toggle('audio',!c.video||CALL.camoff);$('#pme').innerHTML=av(S.me,'phav').replace('class="av phav"','');
+  others.forEach(u=>{if($('#tile-'+u))return;box.insertAdjacentHTML('beforeend',`<div class="tile ${c.video?'':'audio'}" id="tile-${u}"><video id="v-${u}" autoplay playsinline></video><div class="av phav">${(S.users.find(z=>z.u==u)||{u,av:0}).av?`<img src="/avatar/${encodeURIComponent(u)}?v=${(S.users.find(z=>z.u==u)||{}).av}" alt="">`:esc(u[0].toUpperCase())}</div><small>${esc(u)}</small></div>`);
+    const v=$('#v-'+u);if(v&&CALL.streams.get(u))v.srcObject=CALL.streams.get(u)});
+  [...box.children].forEach(el=>{const id=el.id.slice(5);if(id!=='me'&&!ids.has(id))el.remove()});
+  others.forEach(u=>{const v=$('#v-'+u),stt=CALL.streams.get(u);if(v&&stt&&v.srcObject!==stt)v.srcObject=stt;const tl=$('#tile-'+u);if(tl)tl.classList.toggle('audio',!c.video||!stt||!stt.getVideoTracks().some(x=>x.enabled&&x.readyState==='live'))});
+  if(st)st.textContent=others.length?t(c.video?'Görüntülü arama':'Sesli arama'):t(isG(c.to)?'Bekleniyor…':'Aranıyor…')}
+async function bootCall(call,ice){
+  CALL.id=call.id;CALL.call=call;CALL.ice=(ice&&ice.length)?ice:CALL.ice;CALL.pcs=new Map();CALL.streams=new Map();CALL.muted=false;CALL.camoff=false;
+  $('#stage').classList.add('on');paintStage();
+  if(!navigator.mediaDevices||!window.RTCPeerConnection){toast(t('Bu tarayıcı aramayı desteklemiyor'));return hangup()}
+  try{CALL.local=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:call.video?{facingMode:'user',width:{ideal:960},height:{ideal:720}}:false})}
+  catch(e){toast(t('Mikrofon veya kamera izni verilmedi'));return hangup()}
+  let go;CALL.ready=new Promise(r=>go=r);paintStage();
+  call.live.filter(u=>u!==S.me.u).forEach(u=>linkPeer(u,true));go();
+}
+function linkPeer(u,offerer){if(!CALL.id||u===S.me.u||CALL.pcs.has(u))return;
+  const pc=new RTCPeerConnection({iceServers:CALL.ice}),p={pc,q:[]};CALL.pcs.set(u,p);
+  if(CALL.local)CALL.local.getTracks().forEach(tr=>pc.addTrack(tr,CALL.local));
+  pc.onicecandidate=e=>{if(e.candidate)sig(u,{t:'ice',c:e.candidate})};
+  pc.ontrack=e=>{CALL.streams.set(u,e.streams[0]);paintStage()};
+  pc.onconnectionstatechange=()=>{if(pc.connectionState==='failed'&&offerer)pc.createOffer({iceRestart:true}).then(async o=>{await pc.setLocalDescription(o);sig(u,{t:'sdp',d:{type:o.type,sdp:o.sdp}})}).catch(()=>{})};
+  if(offerer)makeOffer(u,pc);paintStage()}
+async function makeOffer(u,pc){try{const o=await pc.createOffer();await pc.setLocalDescription(o);sig(u,{t:'sdp',d:{type:o.type,sdp:o.sdp}})}catch(e){}}
+function sig(to,data){if(CALL.id)api('POST','/call/'+CALL.id+'/signal',{to,data}).catch(()=>{})}
+function flushIce(p){(p.q||[]).forEach(c=>p.pc.addIceCandidate(c).catch(()=>{}));p.q=[]}
+async function onSig(from,data){if(!CALL.id||!data)return;if(!CALL.pcs.has(from))linkPeer(from,false);const p=CALL.pcs.get(from);if(!p)return;
+  try{if(data.t==='sdp'){const d=data.d;if(d.type==='offer'){await p.pc.setRemoteDescription(d);const a=await p.pc.createAnswer();await p.pc.setLocalDescription(a);sig(from,{t:'sdp',d:{type:a.type,sdp:a.sdp}});flushIce(p)}
+    else if(d.type==='answer'&&p.pc.signalingState!=='stable'){await p.pc.setRemoteDescription(d);flushIce(p)}}
+    else if(data.t==='ice'){if(!p.pc.remoteDescription)p.q.push(data.c);else await p.pc.addIceCandidate(data.c)}}catch(e){}}
+function closePeer(u){const p=CALL.pcs.get(u);if(!p)return;try{p.pc.close()}catch(e){}CALL.pcs.delete(u);CALL.streams.delete(u);const el=$('#tile-'+u);if(el)el.remove()}
+function hangup(silent){const id=CALL.id;hideInvite();for(const u of[...CALL.pcs.keys()])closePeer(u);if(CALL.local){CALL.local.getTracks().forEach(x=>x.stop());CALL.local=null}CALL.id=null;CALL.call=null;CALL.ready=null;$('#stage').classList.remove('on');$('#stage').innerHTML='';if(id&&!silent)api('POST','/call/'+id+'/leave').catch(()=>{})}
+function onCallEv(d){if(!S.me)return;
+  if(d.kind==='invite'){showInvite(d.call);return}
+  if(d.kind==='end'){if(CALL.invite&&CALL.invite.id===d.id)hideInvite();if(CALL.id===d.id){if(d.why==='reject')toast(t('Arama reddedildi'));else if(d.why==='timeout')toast(t('Yanıt yok'));else toast(t('Arama bitti'));hangup(1)}return}
+  if(d.kind==='reject'){if(CALL.invite&&CALL.invite.id===d.id)hideInvite();if(CALL.id===d.id&&CALL.call&&!isG(CALL.call.to)&&CALL.pcs.size<1){toast(t('Arama reddedildi'));hangup(1)}return}
+  if(d.kind==='leave'&&d.call&&CALL.id===d.call.id){CALL.call=d.call;closePeer(d.u);if(!isG(d.call.to)&&d.call.live.filter(u=>u!==S.me.u).length<1)hangup(1);else paintStage();return}
+  if((d.kind==='peer'||d.kind==='state')&&d.call){if(CALL.id===d.call.id){CALL.call=d.call;if(d.kind==='peer'&&d.u&&d.u!==S.me.u)linkPeer(d.u,false);paintStage()}return}
+  if(d.kind==='signal'&&CALL.id===d.id&&CALL.ready)CALL.ready.then(()=>onSig(d.from,d.data))}
+addEventListener('pagehide',()=>{if(CALL.id)try{navigator.sendBeacon('/api/call/'+CALL.id+'/leave',new Blob(['{}'],{type:'application/json'}))}catch(e){}});
 /* başlangıç */
 history.replaceState(null,'');setMob();setLang(LANG,1);
 (async()=>{try{S.cfg=await api('GET','/config')}catch(e){$('#login').classList.add('on');$('#err').textContent=e.message;return}
