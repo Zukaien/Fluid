@@ -134,7 +134,7 @@ const groupOf = (g, me) => { const k = 'g:' + g.id, m = db.msgs[k] || [], l = m[
   return { id: g.id, name: g.name, owner: g.owner, members: g.members.map(u => ({ u, av: db.users[u] ? db.users[u].av : 0 })),
     unread: m.filter(z => z.f !== me && z.id > last && !z.d).length, last: l ? { t: l.d ? '' : l.t, ts: l.ts, f: l.f, g: !!l.g, i: !!l.i, d: !!l.d } : null, arch: archOf(k, me) }; };
 const groupsFor = me => Object.values(db.groups).filter(g => g.members.includes(me)).map(g => groupOf(g, me));
-function dropGroup(id) { rmImgs(db.msgs['g:' + id]); delete db.groups[id]; delete db.msgs['g:' + id]; delete db.arch['g:' + id]; for (const u in db.reads) delete db.reads[u]['g:' + id]; }
+const dropGroup = id => { rmImgs(db.msgs['g:' + id]); delete db.groups[id]; delete db.msgs['g:' + id]; delete db.arch['g:' + id]; for (const u in db.reads) delete db.reads[u]['g:' + id]; };
 const push = (u, ev) => { for (const r of clients.get(u) || []) r.write(`data: ${JSON.stringify(ev)}\n\n`); };
 const broadcast = ev => { for (const u of clients.keys()) push(u, ev); };
 setInterval(() => { for (const s of clients.values()) for (const r of s) r.write(':\n\n'); }, 25000);
@@ -180,17 +180,11 @@ async function gifs(q) {
   if (gifCache.size > 200) gifCache.clear(); gifCache.set(ck, { t: Date.now(), d }); return d;
 }
 
-// ---- EKLEME: CALL SERVER TANIMI (apply-call.js ile eklenen kısım) ----
-const CALL = require('./call-server.js')({ db: () => db, push, members, key });
-
 const server = http.createServer(async (req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff'); res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin'); res.setHeader('X-Frame-Options', 'DENY');
   const url = new URL(req.url, 'http://x'), p = url.pathname, M = req.method;
   try {
     if (M === 'GET' && p === '/') { res.setHeader('Content-Security-Policy', CSP); res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-cache' }); return res.end(fs.readFileSync(path.join(__dirname, 'index.html'))); }
-    
-    // ---- EKLEME: call.js sunumu ----
-    if (M === 'GET' && p === '/call.js') { res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8', 'Cache-Control': 'no-cache' }); return res.end(fs.readFileSync(path.join(__dirname, 'call.js'))); }
 
     { const mm = /^\/media\/(frutiger\.(?:mp4|webm|mp3))$/.exec(p); if ((M === 'GET' || M === 'HEAD') && mm) return media(req, res, mm[1]); }
     if (!p.startsWith('/api/') && !p.startsWith('/avatar/') && !p.startsWith('/img/')) { res.writeHead(404); return res.end(); }
@@ -219,9 +213,6 @@ const server = http.createServer(async (req, res) => {
     const me = auth(req); if (!me) return J(res, 401, { error: 'Oturum gerekli' });
     const hu = req.headers['x-fluid-user']; if (hu && hu !== me) return J(res, 409, { error: 'Hesap değişti' });
     const U = db.users[me];
-
-    // ---- EKLEME: Call API rotaları ----
-    if (M === 'POST' && p.startsWith('/api/call/')) return await CALL.route(req, res, p, me, body, J);
 
     let m;
     if (M === 'GET' && (m = /^\/avatar\/([^/]+)$/.exec(p))) {
@@ -270,16 +261,11 @@ const server = http.createServer(async (req, res) => {
       res.write('retry: 3000\n\n');
       let set = clients.get(me); if (!set) clients.set(me, set = new Set());
       const was = set.size; set.add(res); if (!was) broadcast({ type: 'presence' });
-      
-      // ---- EKLEME: Ring kontrolü ----
-      CALL.rings(me, res);
 
       req.on('close', () => { 
         set.delete(res); 
         if (!set.size) setTimeout(() => { 
           if (!(clients.get(me) || { size: 0 }).size) { 
-            // ---- EKLEME: Çıkışta aramalardan düşür ----
-            CALL.leaveAll(me); 
             broadcast({ type: 'presence' }); 
           } 
         }, 3000); 
@@ -381,21 +367,15 @@ const server = http.createServer(async (req, res) => {
       Object.assign(U, mkPass(n)); dropSessions(me, sessKey(req)); save(); return J(res, 200, {});
     }
     if (M === 'POST' && p === '/api/logout') { 
-      // ---- EKLEME: Çıkış yaparken aramadan ayrıl ----
-      CALL.leaveAll(me);
       delete db.sessions[sessKey(req)]; cookie(res, '', 0, req); save(); return J(res, 200, {}); 
     }
     if (M === 'POST' && p === '/api/logout-all') { 
-      CALL.leaveAll(me);
       dropSessions(me); cookie(res, '', 0, req); save(); return J(res, 200, {}); 
     }
     if (M === 'POST' && p === '/api/delete') {
       const b = await body(req), pk = 'pw:' + me, w = wait([pk, 8]); if (w) return tooMany(res, w);
       if (!okPass(U, String(b.p || ''))) { strike(pk); return J(res, 403, { error: 'Şifre hatalı' }); }
       
-      // ---- EKLEME: Hesap silinirken aramadan ayrıl ----
-      CALL.leaveAll(me);
-
       delete db.users[me]; dropSessions(me); delete db.reads[me]; delete db.follows[me];
       for (const k in db.follows) db.follows[k] = db.follows[k].filter(x => x !== me);
       for (const g of Object.values(db.groups)) if (g.members.includes(me)) { g.members = g.members.filter(x => x !== me); if (!g.members.length) dropGroup(g.id); else if (g.owner === me) g.owner = g.members[0]; }
