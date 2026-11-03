@@ -10,7 +10,8 @@ const ACCENTS = ['ice', 'violet', 'mint', 'rose'];
 const DEF = { accent: 'ice', snow: true, calm: false, sound: true, showOnline: true, frutiger: false, fmusic: false };
 const GIPHY_KEY = process.env.GIPHY_API_KEY || '', GIPHY_BASE = process.env.GIPHY_BASE || 'https://api.giphy.com/v1/gifs/';
 const GIF_RE = /^https:\/\/(media\d*|i)\.giphy\.com\//, clampN = v => Math.max(50, Math.min(600, Math.round(+v) || 200));
-const CSP = "default-src 'self'; img-src 'self' data: https://*.giphy.com; media-src 'self' blob:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
+// img-src'ye blob: eklendi: düzenleyicide seçilen fotoğrafın önizlemesi ve decode işlemi blob: adresiyle çalışır.
+const CSP = "default-src 'self'; img-src 'self' data: blob: https://*.giphy.com; media-src 'self' blob:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
 // hikaye sabitleri
 const STORY_MS = DAY, SMAX = 5, VID_MAX = 15 * 1024 * 1024, IMG_MAX = 3 * 1024 * 1024, PEND_MAX = 3;
 
