@@ -783,6 +783,7 @@ const SMAX=5,VID_MAX=15*1024*1024,SE_COLORS=['#ffffff','#8fe3ff','#5dffa8','#ff9
 const SE={blob:null,kind:'img',url:null,texts:[],strokes:[],hist:[],color:'#ffffff',draw:false,cur:null,drag:null,busy:0};
 const SV={ui:0,ii:0,el:0,dur:5000,paused:false,raf:0,last:0};
 Object.assign(EN,{"Ana sayfa":"Home","Hikaye ekle":"Add story","Hikayen":"Your story","Takip ettiklerinin hikayesi yok":"No stories from people you follow","Birini takip edip ilk hikayesini gör":"Follow someone to see their stories","görüntülenme":"views","Bu hikayeyi silmek istiyor musun?":"Do you want to delete this story?","Yeni hikaye":"New story","Paylaşılıyor…":"Sharing…","Hikaye paylaşıldı":"Story shared","Video en fazla 15 MB olabilir":"Video can be at most 15 MB","Sadece fotoğraf veya MP4/WebM video":"Only photos or MP4/WebM video","Günde en fazla 5 story paylaşabilirsin":"You can share at most 5 stories a day","Sadece JPEG fotoğraf, MP4 veya WebM video":"Only JPEG photo, MP4 or WebM video","Fotoğraf en fazla 3 MB olabilir":"Photo can be at most 3 MB","Geçersiz dosya":"Invalid file","Önce bekleyen paylaşımını tamamla":"Finish your pending upload first","Medya bulunamadı":"Media not found","Story bulunamadı":"Story not found","Metin yaz…":"Type text…"});
+EN["Bu fotoğraf okunamadı, JPEG veya PNG dene"]="This photo could not be read, try a JPEG or PNG";
 const ago=ts=>{const m=Math.max(1,Math.round((Date.now()-ts)/6e4));if(m<60)return LANG=='en'?m+' min ago':m+' dk önce';const h=Math.round(m/60);return LANG=='en'?h+' h ago':h+' sa önce'};
 async function loadFeed(){try{const d=await api('GET','/stories/feed');S.feed=d.users;if(S.cur=='__home')renderHome()}catch(e){authErr(e)}}
 const ovSVG=(ov,edit)=>{ov=ov||{};
@@ -879,9 +880,11 @@ async function shareStory(){if(SE.busy||!SE.blob)return;SE.busy=1;const b=$('#so
   finally{SE.busy=0;const bb=$('#sok');if(bb)bb.textContent=t('Paylaş')}}
 $('#sfile').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;
   try{
-    if(f.type.startsWith('image/')){const im=new Image();im.src=URL.createObjectURL(f);await im.decode();
+    if(f.type.startsWith('image/')){
+      const src=URL.createObjectURL(f),im=new Image();im.src=src;
+      try{await im.decode()}catch(x){URL.revokeObjectURL(src);throw new Error(t('Bu fotoğraf okunamadı, JPEG veya PNG dene'))}
       const c=document.createElement('canvas');c.width=900;c.height=1600;const k=Math.max(900/im.width,1600/im.height),w=im.width*k,h=im.height*k,x=c.getContext('2d');
-      x.fillStyle='#04122a';x.fillRect(0,0,900,1600);x.drawImage(im,(900-w)/2,(1600-h)/2,w,h);
+      x.fillStyle='#04122a';x.fillRect(0,0,900,1600);x.drawImage(im,(900-w)/2,(1600-h)/2,w,h);URL.revokeObjectURL(src);
       SE.blob=await new Promise((ok,no)=>c.toBlob(b=>b?ok(b):no(new Error(t('Geçersiz fotoğraf'))),'image/jpeg',.86));SE.kind='img'}
     else if(f.type=='video/mp4'||f.type=='video/webm'){if(f.size>VID_MAX)throw new Error(t('Video en fazla 15 MB olabilir'));SE.blob=f;SE.kind='vid'}
     else throw new Error(t('Sadece fotoğraf veya MP4/WebM video'));
