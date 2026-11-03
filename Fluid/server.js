@@ -7,13 +7,15 @@ const DATA = process.env.DATA_DIR || path.join(__dirname, 'data'), FILE = path.j
 const INVITE = process.env.INVITE_CODE || '', TRUST = process.env.TRUST_PROXY === '1' || !!process.env.RENDER;
 const DAY = 864e5, SESS = 30 * DAY, NAME = /^[a-z0-9_]{3,16}$/;
 const ACCENTS = ['ice', 'violet', 'mint', 'rose'];
-const DEF = { accent: 'ice', snow: true, calm: false, sound: true, notify: false, showOnline: true, frutiger: false };
+const DEF = { accent: 'ice', snow: true, calm: false, sound: true, showOnline: true, frutiger: false, fmusic: false };
 const GIPHY_KEY = process.env.GIPHY_API_KEY || '', GIPHY_BASE = process.env.GIPHY_BASE || 'https://api.giphy.com/v1/gifs/';
 const GIF_RE = /^https:\/\/(media\d*|i)\.giphy\.com\//, clampN = v => Math.max(50, Math.min(600, Math.round(+v) || 200));
 const CSP = "default-src 'self'; img-src 'self' data: https://*.giphy.com; media-src 'self' blob:; frame-src https://www.youtube.com https://www.youtube-nocookie.com; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'";
+// hikaye sabitleri
+const STORY_MS = DAY, SMAX = 5, VID_MAX = 15 * 1024 * 1024, IMG_MAX = 3 * 1024 * 1024, PEND_MAX = 3;
 
 fs.mkdirSync(DATA, { recursive: true });
-let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, arch: {}, imgs: {}, seq: 0 };
+let db = { users: {}, msgs: {}, reads: {}, sessions: {}, follows: {}, groups: {}, arch: {}, imgs: {}, stories: {}, sm: {}, seq: 0 };
 try { db = Object.assign(db, JSON.parse(fs.readFileSync(FILE, 'utf8'))); } catch (e) { if (e.code !== 'ENOENT') throw e; }
 let timer = null;
 const flushFile = () => { const t = FILE + '.tmp'; fs.writeFileSync(t, JSON.stringify(db)); fs.renameSync(t, FILE); };
@@ -28,9 +30,10 @@ async function rpipe(cmds) {
   return a.map(x => x.result);
 }
 const shards = () => {
-  const out = {}, users = {};
+  const out = {}, users = {}, smMeta = {};
   for (const u in db.users) { const { avatar, ...rest } = db.users[u]; users[u] = rest; if (avatar) out['fluid:av:' + u] = avatar; }
-  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), imgs: Object.keys(db.imgs), follows: db.follows, groups: db.groups, arch: db.arch });
+  for (const id in db.sm) { const { d, ...meta } = db.sm[id]; smMeta[id] = meta; out['fluid:sd:' + id] = d; }
+  out['fluid:core'] = JSON.stringify({ users, reads: db.reads, sessions: db.sessions, seq: db.seq, convs: Object.keys(db.msgs), imgs: Object.keys(db.imgs), follows: db.follows, groups: db.groups, arch: db.arch, stories: db.stories, smMeta });
   for (const k in db.msgs) out['fluid:msg:' + k] = JSON.stringify(db.msgs[k]);
   for (const k in db.imgs) out['fluid:img:' + k] = db.imgs[k];
   return out;
@@ -49,12 +52,14 @@ async function loadRemote() {
   const raw = (await rpipe([['GET', 'fluid:core']]))[0];
   if (raw) {
     const core = JSON.parse(raw), names = Object.keys(core.users || {}), convs = core.convs || [], res = [];
-    const imgs = core.imgs || [], cmds = [...names.map(u => ['GET', 'fluid:av:' + u]), ...convs.map(k => ['GET', 'fluid:msg:' + k]), ...imgs.map(k => ['GET', 'fluid:img:' + k])];
+    const imgs = core.imgs || [], smIds = Object.keys(core.smMeta || {});
+    const cmds = [...names.map(u => ['GET', 'fluid:av:' + u]), ...convs.map(k => ['GET', 'fluid:msg:' + k]), ...imgs.map(k => ['GET', 'fluid:img:' + k]), ...smIds.map(k => ['GET', 'fluid:sd:' + k])];
     for (let i = 0; i < cmds.length; i += 50) res.push(...await rpipe(cmds.slice(i, i + 50)));
-    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, groups: core.groups || {}, arch: core.arch || {}, seq: core.seq || 0, msgs: {}, imgs: {} };
+    db = { users: core.users || {}, reads: core.reads || {}, sessions: core.sessions || {}, follows: core.follows || {}, groups: core.groups || {}, arch: core.arch || {}, stories: core.stories || {}, sm: {}, seq: core.seq || 0, msgs: {}, imgs: {} };
     names.forEach((u, i) => { db.users[u].avatar = res[i] || ''; });
     convs.forEach((k, i) => { db.msgs[k] = JSON.parse(res[names.length + i] || '[]'); });
     imgs.forEach((k, i) => { const v = res[names.length + convs.length + i]; if (v) db.imgs[k] = v; });
+    smIds.forEach((id, i) => { db.sm[id] = { ...core.smMeta[id], d: res[names.length + convs.length + imgs.length + i] || '' }; });
     remoteState = shards();
   } else console.log('Uzak veritabanı boş, mevcut veriyle başlanıyor.');
   ready = true;
@@ -135,6 +140,52 @@ function dropGroup(id) { rmImgs(db.msgs['g:' + id]); delete db.groups[id]; delet
 const push = (u, ev) => { for (const r of clients.get(u) || []) r.write(`data: ${JSON.stringify(ev)}\n\n`); };
 const broadcast = ev => { for (const u of clients.keys()) push(u, ev); };
 setInterval(() => { for (const s of clients.values()) for (const r of s) r.write(':\n\n'); }, 25000);
+
+// ---- hikayeler yardımcıları ----
+const liveStory = s => s.ts + STORY_MS > Date.now();
+const storyCount = me => Object.values(db.stories).filter(s => s.u === me && liveStory(s)).length;
+const pubStory = (s, me) => ({ id: s.id, u: s.u, kind: s.kind, ts: s.ts, ov: s.ov, mine: s.u === me, seen: s.u === me || s.views.includes(me), views: s.u === me ? s.views.length : 0 });
+function dropStory(id) { const s = db.stories[id]; if (s) delete db.sm[s.mid]; delete db.stories[id]; }
+function sweepStories() {
+  let ch = false; const now = Date.now();
+  for (const id of Object.keys(db.stories)) if (db.stories[id].ts + STORY_MS < now) { dropStory(id); ch = true; }
+  for (const mid of Object.keys(db.sm)) { const m = db.sm[mid]; if (!m.used && m.ts + 36e5 < now) { delete db.sm[mid]; ch = true; } }
+  if (ch) { save(); broadcast({ type: 'story' }); }
+}
+setInterval(sweepStories, 6e4);
+const magicOk = (mime, b) => mime === 'image/jpeg' ? b[0] === 0xff && b[1] === 0xd8
+  : mime === 'video/mp4' ? b.slice(4, 8).toString() === 'ftyp'
+  : mime === 'video/webm' ? b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3 : false;
+const cleanOv = o => {
+  o = o && typeof o === 'object' ? o : {};
+  const num = (v, max) => Math.max(0, Math.min(max, Math.round(+v) || 0));
+  const col = c => /^#[0-9a-f]{6}$/i.test(c) ? c : '#ffffff';
+  const t = (Array.isArray(o.t) ? o.t : []).slice(0, 30).map(x => ({ x: num(x.x, 900), y: num(x.y, 1600), s: Math.max(24, Math.min(120, Math.round(+x.s) || 56)), c: col(x.c), t: String(x.t || '').trim().slice(0, 24) })).filter(x => x.t);
+  const s = (Array.isArray(o.s) ? o.s : []).slice(0, 200).map(x => ({ c: col(x.c), w: Math.max(2, Math.min(40, Math.round(+x.w) || 10)), p: (Array.isArray(x.p) ? x.p : []).slice(0, 600).map(q => [num(q[0], 900), num(q[1], 1600)]) })).filter(x => x.p.length > 1);
+  return { t, s };
+};
+const rawBody = (req, max) => new Promise((ok, no) => {
+  if ((+req.headers['content-length'] || 0) > max) return no(new Error('big'));
+  let n = 0; const c = [];
+  req.on('data', d => { n += d.length; if (n > max) { no(new Error('big')); req.destroy(); } else c.push(d); });
+  req.on('end', () => ok(Buffer.concat(c)));
+  req.on('error', no);
+});
+const bufs = new WeakMap();
+const bufOf = sm => { let b = bufs.get(sm); if (!b) { b = Buffer.from(sm.d, 'base64'); bufs.set(sm, b); } return b; };
+function serveBuf(req, res, buf, mime) {
+  const size = buf.length, r = /^bytes=(\d*)-(\d*)$/.exec(req.headers.range || '');
+  let s = 0, e = size - 1, code = 200;
+  if (r && (r[1] || r[2])) {
+    if (r[1]) { s = +r[1]; if (r[2]) e = Math.min(+r[2], e); } else s = Math.max(0, size - +r[2]);
+    if (s > e || s >= size) { res.writeHead(416, { 'Content-Range': 'bytes */' + size }); return res.end(); }
+    code = 206;
+  }
+  const h = { 'Content-Type': mime, 'Accept-Ranges': 'bytes', 'Content-Length': e - s + 1, 'Cache-Control': 'private, max-age=3600' };
+  if (code === 206) h['Content-Range'] = `bytes ${s}-${e}/${size}`;
+  res.writeHead(code, h);
+  res.end(req.method === 'HEAD' ? undefined : buf.subarray(s, e + 1));
+}
 
 // ---- arama sinyali: medya tarayıcıda (WebRTC). sunucu yalnızca kimleri bağlayacağını taşır ----
 function iceServers() {
@@ -402,6 +453,57 @@ const server = http.createServer(async (req, res) => {
         for (const u of gk ? grp.members : [other, me]) push(u, ev); return J(res, 200, { m: msg });
       }
     }
+
+    // ---- hikayeler: 24 saat, günde en fazla 5, takip edilenler + kendin ----
+    if (M === 'POST' && p === '/api/stories/upload') {
+      const mime = String(req.headers['content-type'] || '').split(';')[0].trim();
+      const max = mime === 'video/mp4' || mime === 'video/webm' ? VID_MAX : mime === 'image/jpeg' ? IMG_MAX : 0;
+      if (!max) return J(res, 415, { error: 'Sadece JPEG fotoğraf, MP4 veya WebM video' });
+      if (storyCount(me) >= SMAX) return J(res, 429, { error: 'Günde en fazla 5 story paylaşabilirsin' });
+      if (Object.values(db.sm).filter(x => x.u === me && !x.used).length >= PEND_MAX) return J(res, 429, { error: 'Önce bekleyen paylaşımını tamamla' });
+      let buf;
+      try { buf = await rawBody(req, max); }
+      catch (e) { return J(res, 413, { error: mime.startsWith('video') ? 'Video en fazla 15 MB olabilir' : 'Fotoğraf en fazla 3 MB olabilir' }); }
+      if (!magicOk(mime, buf)) return J(res, 400, { error: 'Geçersiz dosya' });
+      const mid = crypto.randomBytes(12).toString('hex');
+      db.sm[mid] = { u: me, mime, ts: Date.now(), used: false, d: buf.toString('base64') };
+      save(); return J(res, 200, { mid });
+    }
+    if (M === 'POST' && p === '/api/stories') {
+      const b = await body(req), sm = db.sm[String(b.mid || '')];
+      if (!sm || sm.u !== me || sm.used) return J(res, 404, { error: 'Medya bulunamadı' });
+      if (storyCount(me) >= SMAX) return J(res, 429, { error: 'Günde en fazla 5 story paylaşabilirsin' });
+      const id = crypto.randomBytes(12).toString('hex');
+      const story = { id, u: me, mid: String(b.mid), kind: sm.mime.startsWith('video') ? 'vid' : 'img', ts: Date.now(), ov: cleanOv(b.ov), views: [] };
+      db.stories[id] = story; sm.used = true; save(); broadcast({ type: 'story' });
+      return J(res, 200, { story: pubStory(story, me) });
+    }
+    if (M === 'GET' && p === '/api/stories/feed') {
+      sweepStories();
+      const fol = new Set(db.follows[me] || []), by = {};
+      for (const s of Object.values(db.stories)) if (liveStory(s) && (s.u === me || fol.has(s.u))) (by[s.u] = by[s.u] || []).push(s);
+      const users = [...new Set([me, ...fol])].filter(u => db.users[u]).map(u => {
+        const items = (by[u] || []).sort((a, b) => a.ts - b.ts).map(s => pubStory(s, me));
+        return { u, av: db.users[u].av, mine: u === me, items, unseen: items.some(s => !s.mine && !s.seen), last: items.length ? items[items.length - 1].ts : 0 };
+      }).filter(x => x.mine || x.items.length);
+      users.sort((a, b) => (b.mine - a.mine) || (b.unseen - a.unseen) || (b.last - a.last));
+      return J(res, 200, { users });
+    }
+    if (M === 'GET' && (m = /^\/api\/stories\/([a-f0-9]{24})\/media$/.exec(p))) {
+      const s = db.stories[m[1]], sm = s && db.sm[s.mid];
+      if (!s || !sm || !liveStory(s) || (s.u !== me && !(db.follows[me] || []).includes(s.u))) { res.writeHead(404); return res.end(); }
+      return serveBuf(req, res, bufOf(sm), sm.mime);
+    }
+    if (M === 'POST' && (m = /^\/api\/stories\/([a-f0-9]{24})\/view$/.exec(p))) {
+      const s = db.stories[m[1]];
+      if (s && s.u !== me && liveStory(s) && (db.follows[me] || []).includes(s.u) && !s.views.includes(me)) { s.views.push(me); save(); }
+      return J(res, 200, {});
+    }
+    if (M === 'DELETE' && (m = /^\/api\/stories\/([a-f0-9]{24})$/.exec(p))) {
+      const s = db.stories[m[1]]; if (!s || s.u !== me) return J(res, 404, { error: 'Story bulunamadı' });
+      dropStory(s.id); save(); broadcast({ type: 'story' }); return J(res, 200, {});
+    }
+
     if (M === 'PUT' && p === '/api/profile') {
       const b = await body(req);
       if ('bio' in b) U.bio = String(b.bio).slice(0, 150);
@@ -421,7 +523,7 @@ const server = http.createServer(async (req, res) => {
       const b = await body(req), s = U.settings = { ...DEF, ...U.settings };
       if (ACCENTS.includes(b.accent)) s.accent = b.accent;
       if (['tr', 'en'].includes(b.lang)) s.lang = b.lang;
-      for (const k of ['snow', 'calm', 'sound', 'notify', 'showOnline', 'frutiger']) if (typeof b[k] === 'boolean') s[k] = b[k];
+      for (const k of ['snow', 'calm', 'sound', 'showOnline', 'frutiger', 'fmusic']) if (typeof b[k] === 'boolean') s[k] = b[k];
       save(); if ('showOnline' in b) broadcast({ type: 'presence' }); return J(res, 200, { settings: s });
     }
     if (M === 'POST' && p === '/api/password') {
@@ -440,6 +542,8 @@ const server = http.createServer(async (req, res) => {
       for (const k in db.follows) db.follows[k] = db.follows[k].filter(x => x !== me);
       for (const g of Object.values(db.groups)) if (g.members.includes(me)) { g.members = g.members.filter(x => x !== me); if (!g.members.length) dropGroup(g.id); else if (g.owner === me) g.owner = g.members[0]; }
       for (const k of Object.keys(db.msgs)) if (k.split('|').includes(me)) { rmImgs(db.msgs[k]); delete db.msgs[k]; delete db.arch[k]; }
+      for (const id of Object.keys(db.stories)) if (db.stories[id].u === me) dropStory(id);
+      for (const mid of Object.keys(db.sm)) if (db.sm[mid].u === me) delete db.sm[mid];
       for (const r of clients.get(me) || []) r.end(); clients.delete(me);
       cookie(res, '', 0, req); save(); broadcast({ type: 'user' }); return J(res, 200, {});
     }
@@ -454,7 +558,7 @@ const server = http.createServer(async (req, res) => {
 (async () => {
   if (REMOTE) { try { await loadRemote(); } catch (e) { console.error('Uzak veritabanına bağlanılamadı, veri kaybı olmaması için sunucu başlatılmadı:', e.message); process.exit(1); } }
   if (process.argv[2] === 'reset') return reset();
-  sweepArchives();
+  sweepArchives(); sweepStories();
   server.listen(PORT, HOST, () => console.log(`Fluid çalışıyor → http://localhost:${PORT}  (veri: ${REMOTE ? 'Upstash Redis' : FILE})${INVITE ? '  [davet kodu aktif]' : ''}`));
 })();
 for (const s of ['SIGINT', 'SIGTERM']) process.on(s, async () => {
